@@ -72,6 +72,7 @@ export type PetEvent =
   | { type: 'work'; on: boolean }
   | { type: 'alert' }
   | { type: 'sleep' }
+  | { type: 'listening'; on: boolean }
   | { type: 'click' }
   | { type: 'dragStart' }
   | { type: 'dragMove'; x: number; y: number }
@@ -291,6 +292,15 @@ export function handle(p: Pet, ev: PetEvent, env: Env): Pet {
       if (q.state === 'sleep' || q.state === 'yawn') return enter(q, 'wake_up')
       if (AIRBORNE.has(q.state) || q.ai !== 'idle') return q
       return enter(q, 'wave')
+    }
+
+    case 'listening': {
+      const q: Pet = { ...p, idleFor: 0 }
+      if (ev.on) {
+        if (AIRBORNE.has(q.state) || q.ai !== 'idle') return q
+        return enter(q, 'listen')
+      }
+      return q.state === 'listen' ? toIdle(q, env) : q
     }
 
     case 'sleep':
