@@ -59,7 +59,7 @@ tests/         Vitest
 
 ---
 
-## Fase 1 — MVP: Dark vivo en el escritorio + chat (Tareas 1–8)
+## Fase 1 — MVP: Dark vivo en el escritorio + chat (Tareas 1–8) ✅ hecha 2026-11-08
 
 ### Task 1: Preparar el proyecto
 - `git init`, `.gitignore` (node_modules, out, dist, .superpowers).
@@ -129,14 +129,14 @@ tests/         Vitest
 
 ---
 
-## Fase 2 — Memoria, utilidades e instalador (Tareas 9–12)
+## Fase 2 — Memoria, utilidades e instalador (Tareas 9–12) ✅ hecha 2026-11-08
 
 ### Task 9: Memoria a largo plazo
 - `memoria.json` con hechos sobre el usuario que la IA extrae al final de cada conversación (respuesta en JSON). Se inyectan en el prompt de sistema.
 - En los ajustes: ver, editar y borrar recuerdos.
 
 ### Task 10: Recordatorios
-- "Recuérdame X en 20 min" → *tool calling* (los tres proveedores lo soportan) → notificación de Windows + Dark hace `wave` y lo dice en la burbuja.
+- "Recuérdame X en 20 min" → etiqueta `[recordar:+20m|X]` en la respuesta (en vez de *tool calling*: funciona igual con todos los proveedores y con streaming) → notificación de Windows + Dark hace `wave` y lo dice en la burbuja.
 - Los recordatorios se guardan y sobreviven a un reinicio.
 
 ### Task 11: Pomodoro

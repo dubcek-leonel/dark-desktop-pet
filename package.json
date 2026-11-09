@@ -9,11 +9,38 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dist": "electron-vite build && electron-builder --win nsis"
+  },
+  "author": "Dubcek Leonel",
+  "build": {
+    "appId": "com.dubcek.dark",
+    "productName": "Dark",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "assets/character/dark/icon-512.png",
+      "assets/character/dark/tray-32.png",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/character/dark/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Dark",
+      "artifactName": "Dark-Setup-${version}.${ext}"
+    }
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
     "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "typescript": "^5.9.3",
     "vite": "^8.3.6",
