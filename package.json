@@ -1,6 +1,6 @@
 {
   "name": "dark-desktop-pet",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Dark, una mascota de escritorio con IA",
   "main": "out/main/index.js",
   "private": true,
@@ -20,7 +20,9 @@
       "output": "dist"
     },
     "files": [
-      "out/**/*",
+      "out/main/**/*",
+      "out/preload/**/*",
+      "out/renderer/**/*",
       "assets/character/dark/icon-512.png",
       "assets/character/dark/tray-32.png",
       "package.json"

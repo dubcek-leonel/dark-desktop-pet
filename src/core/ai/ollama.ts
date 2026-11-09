@@ -31,6 +31,7 @@ export function createOllama(o: OllamaOptions): AIProvider {
       try {
         if (!res.ok) throw await errorFromResponse(res)
         if (!res.body) throw new AIError('http', 'Respuesta vacía')
+        let complete = false
         let full = ''
         let buf = ''
         const reader = res.body.getReader()
@@ -38,7 +39,8 @@ export function createOllama(o: OllamaOptions): AIProvider {
         const handleLine = (line: string): void => {
           if (!line.trim()) return
           try {
-            const j = JSON.parse(line) as { message?: { content?: string }; error?: string }
+            const j = JSON.parse(line) as { message?: { content?: string }; error?: string; done?: boolean }
+            if (j.done) complete = true
             if (j.error) throw new AIError('http', j.error)
             const t = j.message?.content
             if (t) {
@@ -58,6 +60,7 @@ export function createOllama(o: OllamaOptions): AIProvider {
           lines.forEach(handleLine)
         }
         handleLine(buf)
+        if (!complete) throw new AIError('network', 'La conexión se cortó antes de completar la respuesta')
         return full
       } finally {
         done()

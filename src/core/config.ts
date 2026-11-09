@@ -8,6 +8,7 @@ export interface Config {
   personality: string
   /** Tamaño de Dark: 256 px × scale */
   scale: number
+  wanderEnabled: boolean
   sleepAfterMinutes: number
   startWithWindows: boolean
   memoryEnabled: boolean
@@ -71,6 +72,7 @@ export const DEFAULT_CONFIG: Config = {
   name: 'Dark',
   personality: 'sarcástico y algo flojo',
   scale: 1,
+  wanderEnabled: true,
   sleepAfterMinutes: 5,
   startWithWindows: false,
   memoryEnabled: true,
@@ -114,6 +116,7 @@ export function normalizeConfig(raw: unknown): Config {
     name: str(r.name, DEFAULT_CONFIG.name, 40),
     personality: str(r.personality, DEFAULT_CONFIG.personality, 1000),
     scale: num(r.scale, DEFAULT_CONFIG.scale, 0.5, 2),
+    wanderEnabled: r.wanderEnabled !== false,
     sleepAfterMinutes: num(r.sleepAfterMinutes, DEFAULT_CONFIG.sleepAfterMinutes, 1, 120),
     startWithWindows: r.startWithWindows === true,
     memoryEnabled: r.memoryEnabled !== false,

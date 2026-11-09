@@ -9,6 +9,7 @@ const TICK_MS = 33
 export interface PetOptions {
   scale: number
   sleepAfterMs: number
+  wanderEnabled?: boolean
 }
 
 /** Une el cerebro (behavior.ts) con la ventana real: la mueve y le dice qué animar. */
@@ -76,12 +77,14 @@ export class PetController {
     const center = this.pet
       ? { x: Math.round(this.pet.x + s / 2), y: Math.round(this.pet.y + s / 2) }
       : screen.getCursorScreenPoint()
+    const area = screen.getDisplayNearestPoint(center).workArea
     return {
-      bounds: screen.getDisplayNearestPoint(center).workArea,
+      bounds: { ...area, height: Math.max(128, area.height - (this.pet?.engaged ? 64 : 0)) },
       scale: this.opts.scale,
       rand: Math.random,
       durationOf: (a) => animDurationMs(sheet, a),
-      sleepAfterMs: this.opts.sleepAfterMs
+      sleepAfterMs: this.opts.sleepAfterMs,
+      wanderEnabled: this.opts.wanderEnabled
     }
   }
 

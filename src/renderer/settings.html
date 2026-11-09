@@ -1,293 +1,83 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'" />
-    <title>Ajustes</title>
-    <style>
-      :root {
-        --bg: #14141c;
-        --panel: #1d1d29;
-        --panel2: #24243a;
-        --line: #33334a;
-        --text: #ecebf5;
-        --muted: #9a98b0;
-        --accent: #8b5cf6;
-        --ok: #4ade80;
-        --err: #f87171;
-        --warn: #fbbf24;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family: 'Segoe UI', system-ui, sans-serif;
-        font-size: 14px;
-      }
-      header { display: flex; align-items: center; gap: 12px; padding: 16px 20px 10px; }
-      header img { width: 46px; height: 46px; }
-      h1 { font-size: 19px; margin: 0; }
-      header p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
-      #saved { margin-left: auto; color: var(--ok); font-size: 12.5px; opacity: 0; transition: opacity 0.3s; }
-      #saved.show { opacity: 1; }
-
-      nav { display: flex; gap: 4px; padding: 0 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 2; }
-      nav button {
-        border: 0;
-        background: none;
-        color: var(--muted);
-        font: inherit;
-        padding: 10px 12px;
-        cursor: pointer;
-        border-bottom: 2px solid transparent;
-      }
-      nav button.active { color: var(--text); border-bottom-color: var(--accent); }
-      main { padding: 16px 20px 28px; }
-      section[data-tab] { display: none; }
-      section[data-tab].active { display: block; }
-
-      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; }
-      .card-head { display: flex; align-items: center; gap: 12px; }
-      .card-head h2 { font-size: 15.5px; margin: 0; flex: 1; }
-      .card-head small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; margin-top: 2px; }
-      .card-body { margin-top: 12px; }
-      .card.off .card-body { opacity: 0.45; pointer-events: none; }
-
-      /* Interruptor */
-      .switch { position: relative; width: 46px; height: 26px; flex: none; }
-      .switch input { opacity: 0; width: 0; height: 0; }
-      .switch span { position: absolute; inset: 0; background: #3a3a52; border-radius: 13px; cursor: pointer; transition: 0.2s; }
-      .switch span::before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
-      .switch input:checked + span { background: var(--accent); }
-      .switch input:checked + span::before { transform: translateX(20px); }
-
-      label.lbl { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--muted); }
-      input[type='text'], input[type='password'], input[type='number'], select, textarea {
-        width: 100%;
-        padding: 8px 10px;
-        border-radius: 8px;
-        border: 1px solid var(--line);
-        background: var(--bg);
-        color: var(--text);
-        font: inherit;
-      }
-      textarea { resize: vertical; min-height: 60px; }
-      input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-      .row { display: flex; gap: 8px; align-items: center; }
-      .row > input, .row > select { flex: 1; }
-      button {
-        border: 1px solid var(--line);
-        background: var(--panel2);
-        color: var(--text);
-        border-radius: 8px;
-        padding: 8px 12px;
-        font: inherit;
-        cursor: pointer;
-        white-space: nowrap;
-      }
-      button:hover { border-color: var(--accent); }
-      button:disabled { opacity: 0.5; cursor: default; }
-      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-      .hint { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
-      .hint a, .link { color: var(--accent); cursor: pointer; text-decoration: underline; }
-
-      .status { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--panel2); display: none; }
-      .status.show { display: block; }
-      .status.ok { color: var(--ok); }
-      .status.err { color: var(--err); }
-      .status.warn { color: var(--warn); }
-      .progress { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin-top: 6px; }
-      .progress div { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
-
-      .choice { display: flex; gap: 10px; align-items: flex-start; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; margin-top: 8px; cursor: pointer; }
-      .choice:has(input:checked) { border-color: var(--accent); background: var(--panel2); }
-      .choice input { margin-top: 3px; }
-      .choice b { font-weight: 600; }
-      .choice small { display: block; color: var(--muted); font-size: 12.5px; }
-      .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-      kbd { background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: 12px; }
-
-      details { margin-top: 12px; }
-      summary { cursor: pointer; color: var(--muted); font-size: 13px; }
-      .range { display: flex; gap: 10px; align-items: center; }
-      .range input { flex: 1; }
-      .range output { width: 46px; text-align: right; color: var(--muted); }
-
-      .meter { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; margin-top: 8px; }
-      .meter div { height: 100%; width: 0; background: linear-gradient(90deg, var(--ok), var(--accent)); transition: width 0.08s linear; }
-
-      .list { list-style: none; margin: 10px 0; padding: 0; max-height: 240px; overflow-y: auto; }
-      .list li { display: flex; gap: 8px; align-items: flex-start; padding: 7px 8px; border-bottom: 1px solid var(--line); font-size: 13px; }
-      .list li:last-child { border-bottom: 0; }
-      .list li span { flex: 1; }
-      .list li small { color: var(--muted); white-space: nowrap; }
-      .list li button { padding: 0 7px; font-size: 12px; line-height: 20px; }
-      .list .empty { color: var(--muted); border: 0; }
-      button.danger { color: var(--err); }
-    </style>
-  </head>
-  <body>
-    <header>
-      <img id="avatar" alt="" />
-      <div>
-        <h1 id="title">Ajustes</h1>
-        <p>Los cambios se guardan solos.</p>
-      </div>
-      <div id="saved">✓ Guardado</div>
-    </header>
-
-    <nav>
-      <button data-tab="voz" class="active">🎙 Voz</button>
-      <button data-tab="ia">🤖 IA</button>
-      <button data-tab="personaje">🐾 Personaje</button>
-      <button data-tab="memoria">🧠 Memoria</button>
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ajustes de Dark</title>
+</head>
+<body>
+  <a class="skip" href="#main">Ir a los ajustes</a>
+  <header><img id="avatar" alt="" width="36" height="36" /><div><h1 id="title">Ajustes de Dark</h1><p>Configura cómo conversa y te acompaña.</p></div><button id="openChat">Abrir chat</button></header>
+  <div class="layout">
+    <nav aria-label="Categorías de ajustes">
+      <button data-tab="ia" class="active" aria-current="page">Conexión</button>
+      <button data-tab="voz">Voz y micrófono</button>
+      <button data-tab="personaje">Personaje</button>
+      <button data-tab="tareas">Recordatorios y foco</button>
+      <button data-tab="memoria">Memoria</button>
     </nav>
-
-    <main>
-      <!-- ================= VOZ ================= -->
-      <section data-tab="voz" class="active">
-        <div class="card" id="speakCard">
-          <div class="card-head">
-            <h2>🔊 Que Dark hable<small>Lee sus respuestas y avisos en voz alta</small></h2>
-            <label class="switch"><input type="checkbox" id="voiceEnabled" /><span></span></label>
-          </div>
-          <div class="card-body">
-            <label class="lbl" for="voicePick">Voz</label>
-            <div class="row">
-              <select id="voicePick"></select>
-              <button type="button" id="voiceTest">▶ Probar</button>
-            </div>
-            <div class="status" id="voiceStatus"><span></span><div class="progress"><div></div></div></div>
-            <details>
-              <summary>Ajustar velocidad y tono</summary>
-              <label class="lbl" for="voiceSpeed">Velocidad <span class="hint" id="speedNote"></span></label>
-              <div class="range"><input type="range" id="voiceSpeed" min="0.6" max="1.6" step="0.05" /><output id="voiceSpeedOut"></output></div>
-              <label class="lbl" for="voicePitch">Tono (más grave ← → más agudo)</label>
-              <div class="range"><input type="range" id="voicePitch" min="0.75" max="1.4" step="0.05" /><output id="voicePitchOut"></output></div>
-            </details>
-          </div>
-        </div>
-
-        <div class="card" id="listenCard">
-          <div class="card-head">
-            <h2>🎤 Que Dark me escuche<small>Háblale en vez de escribir</small></h2>
-            <label class="switch"><input type="checkbox" id="listenOn" /><span></span></label>
-          </div>
-          <div class="card-body">
-            <label class="choice">
-              <input type="radio" name="listenMode" value="button" />
-              <div><b>Cuando yo quiera</b><small>Tocando 🎤 en la burbuja o con el atajo <kbd id="kbdShow">Ctrl+Alt+D</kbd></small></div>
-            </label>
-            <label class="choice">
-              <input type="radio" name="listenMode" value="wake" />
-              <div><b id="wakeTitle">Siempre, cuando digo "Dark"</b><small>Por ejemplo: "Dark, recuérdame tomar agua en 20 minutos"</small></div>
-            </label>
-            <div class="check">
-              <input type="checkbox" id="conversationMode" />
-              <label for="conversationMode">Seguir la conversación sin tener que llamarlo otra vez</label>
-            </div>
-
-            <div class="row" style="margin-top: 12px">
-              <button type="button" id="micTest">🎤 Probar micrófono</button>
-              <span class="hint" id="micHint">Di algo después de tocar el botón.</span>
-            </div>
-            <div class="meter"><div id="micMeter"></div></div>
-            <div class="status" id="listenStatus"><span></span><div class="progress"><div></div></div></div>
-
-            <details>
-              <summary>Más opciones</summary>
-              <label class="lbl" for="pushToTalkKey">Atajo de teclado</label>
-              <input type="text" id="pushToTalkKey" spellcheck="false" />
-              <label class="lbl" for="sttEngine">Quién entiende lo que dices</label>
-              <select id="sttEngine">
-                <option value="auto">Automático (local si está instalado; si no, Gemini)</option>
-                <option value="gemini">Gemini (usa internet y tu API key)</option>
-                <option value="whisper">Whisper local (sin internet, más rápido)</option>
-              </select>
-              <label class="lbl" for="whisperModel">Modelo local</label>
-              <div class="row">
-                <select id="whisperModel"></select>
-                <button type="button" id="sttDownload">⬇ Descargar</button>
-              </div>
-              <div class="hint">Con el reconocimiento local nada de tu voz sale de tu PC.</div>
-            </details>
-          </div>
-        </div>
-      </section>
-
-      <!-- ================= IA ================= -->
-      <section data-tab="ia">
+    <main id="main" tabindex="-1" inert>
+      <section data-tab="ia" class="active" aria-labelledby="connectionTitle">
+        <h2 id="connectionTitle">Conexión con la IA</h2><p class="intro">Elige el servicio que responderá en el chat.</p>
         <div class="card">
-          <label class="lbl" for="provider" style="margin-top: 0">Proveedor</label>
-          <select id="provider"></select>
+          <label for="provider">Servicio de IA</label><select id="provider" data-setting></select>
+          <p id="providerHint" class="hint"></p>
           <div id="keyBlock">
-            <label class="lbl" for="apiKey">API key</label>
-            <input type="password" id="apiKey" autocomplete="off" spellcheck="false" />
-            <div class="hint" id="keyHint"></div>
+            <label for="apiKey">Clave del servicio (API key)</label>
+            <div class="row"><input id="apiKey" type="password" name="apiKey" autocomplete="off" spellcheck="false" aria-describedby="keyHint" /><button id="showKey" aria-pressed="false">Mostrar</button></div>
+            <p class="hint" id="keyHint"></p><button class="link" id="getKey">Obtener una clave de Google</button>
           </div>
-          <label class="lbl" for="model">Modelo</label>
-          <div class="row">
-            <input type="text" id="model" list="models" spellcheck="false" />
-            <button type="button" id="loadModels">Ver lista</button>
+          <label for="model">Modelo de conversación</label><div class="row"><input id="model" type="text" name="model" list="models" spellcheck="false" data-setting /><button id="loadModels">Buscar modelos</button></div><datalist id="models"></datalist>
+          <p class="hint">Puedes escribir el nombre o elegirlo después de buscar.</p>
+          <details><summary>Conexión avanzada</summary><label for="baseUrl">Dirección del servicio</label><input id="baseUrl" type="url" name="baseUrl" required spellcheck="false" data-setting /><p class="hint">Cámbiala solo si usas otro servidor compatible.</p></details>
+          <div class="actions"><button id="test" class="primary">Probar conexión</button></div><div id="probe" class="status" role="status" hidden><span></span></div>
+        </div>
+        <p class="hint">La voz se configura por separado. Puedes conversar solo por texto.</p>
+      </section>
+      <section data-tab="voz" aria-labelledby="voiceTitle" hidden>
+        <h2 id="voiceTitle">Voz y micrófono</h2><p class="intro">Elige si quieres escuchar a Dark, hablarle o ambas cosas.</p>
+        <div class="card" id="speakCard">
+          <label class="toggle" for="voiceEnabled"><span><strong>Leer respuestas en voz alta</strong><small>Dark habla además de responder por escrito.</small></span><input id="voiceEnabled" type="checkbox" data-setting /></label>
+          <div class="card-body" id="speakOptions" hidden>
+            <label for="voiceEngine">Tipo de voz</label><select id="voiceEngine" data-setting><option value="piper">Local · funciona sin internet</option><option value="gemini">Gemini · usa internet y una clave de Google</option></select>
+            <label for="voicePick">Voz</label><select id="voicePick" data-setting></select>
+            <div id="voiceStatus" class="status" role="status" hidden><span></span><div class="progress" hidden><div></div></div></div>
+            <div class="actions"><button id="voiceDownload" hidden>Descargar voz</button><button id="voiceTest">Escuchar prueba</button><button class="link" data-go="ia" id="voiceConnection" hidden>Configurar clave de Google</button></div>
+            <details><summary>Velocidad y tono</summary><div id="speedControl"><label for="voiceSpeed">Velocidad</label><div class="range"><input id="voiceSpeed" type="range" min="0.6" max="1.6" step="0.05" data-setting /><output id="voiceSpeedOut"></output></div></div><p class="hint" id="speedNote" hidden>Gemini usa su propia velocidad de voz.</p><label for="voicePitch">Tono</label><div class="range"><input id="voicePitch" type="range" min="0.75" max="1.4" step="0.05" data-setting /><output id="voicePitchOut"></output></div></details>
           </div>
-          <datalist id="models"></datalist>
-          <details>
-            <summary>Avanzado</summary>
-            <label class="lbl" for="baseUrl">URL del servicio</label>
-            <input type="text" id="baseUrl" spellcheck="false" />
-          </details>
-          <div class="row" style="margin-top: 12px"><button type="button" id="test" class="primary">Probar conexión</button></div>
-          <div class="status" id="probe"><span></span></div>
+        </div>
+        <div class="card" id="listenCard">
+          <label class="toggle" for="listenOn"><span><strong>Usar el micrófono</strong><small>Habla con Dark en lugar de escribirle.</small></span><input id="listenOn" type="checkbox" data-setting /></label>
+          <div class="card-body" id="listenOptions" hidden>
+            <fieldset><legend>Cuándo escuchar</legend><label class="choice"><input type="radio" name="listenMode" value="button" data-setting /><span>Al pulsar el micrófono<small>También con <kbd id="kbdShow">Ctrl+Alt+D</kbd>.</small></span></label><label class="choice"><input type="radio" name="listenMode" value="wake" data-setting /><span id="wakeTitle">Al decir “Dark”</span></label></fieldset>
+            <label class="check"><input id="conversationMode" type="checkbox" data-setting />Seguir escuchando unos segundos después de responder</label>
+            <label for="sttEngine">Reconocimiento de voz</label><select id="sttEngine" data-setting><option value="auto">Automático</option><option value="gemini">Gemini · con internet</option><option value="whisper">Local · sin internet</option></select>
+            <div id="localRecognition" hidden><label for="whisperModel">Modelo local</label><select id="whisperModel" data-setting></select></div>
+            <div id="listenStatus" class="status" role="status" hidden><span></span><div class="progress" hidden><div></div></div></div>
+            <div class="actions"><button id="sttDownload" hidden>Descargar reconocimiento</button><button id="micTest">Probar micrófono</button><button class="link" id="listenConnection" data-go="ia" hidden>Configurar clave de Google</button></div>
+            <div class="meter" aria-hidden="true"><div id="micMeter"></div></div><p class="hint" id="micHint">La prueba aplica primero tus cambios guardados.</p>
+            <details><summary>Atajo de teclado</summary><label for="pushToTalkKey">Combinación para hablar</label><input id="pushToTalkKey" type="text" name="pushToTalkKey" required spellcheck="false" data-setting /></details>
+          </div>
         </div>
       </section>
-
-      <!-- ================= PERSONAJE ================= -->
-      <section data-tab="personaje">
-        <div class="card">
-          <label class="lbl" for="name" style="margin-top: 0">Nombre</label>
-          <input type="text" id="name" maxlength="40" />
-          <label class="lbl" for="personality">Personalidad</label>
-          <textarea id="personality" maxlength="1000"></textarea>
-          <div class="hint">Ejemplo: sarcástico y algo flojo, pero en el fondo buena onda.</div>
-        </div>
-        <div class="card">
-          <label class="lbl" for="scale" style="margin-top: 0">Tamaño</label>
-          <div class="range"><input type="range" id="scale" min="0.5" max="2" step="0.1" /><output id="scaleOut"></output></div>
-          <label class="lbl" for="sleep">Se duerme después de (minutos sin tocarlo)</label>
-          <input type="number" id="sleep" min="1" max="120" />
-          <div class="check">
-            <input type="checkbox" id="startup" />
-            <label for="startup">Iniciar con Windows (versión instalada)</label>
-          </div>
-        </div>
-        <div class="card">
-          <h2 style="font-size: 15px; margin: 0">🍅 Pomodoro</h2>
-          <div class="row">
-            <div style="flex: 1"><label class="lbl" for="focusMin">Foco (min)</label><input type="number" id="focusMin" min="5" max="90" /></div>
-            <div style="flex: 1"><label class="lbl" for="breakMin">Descanso (min)</label><input type="number" id="breakMin" min="1" max="30" /></div>
-          </div>
-          <div class="hint">También puedes pedírselo: "pon un pomodoro de 45 minutos".</div>
-        </div>
+      <section data-tab="personaje" aria-labelledby="characterTitle" hidden>
+        <h2 id="characterTitle">Tu personaje</h2><p class="intro">Su nombre, su forma de hablar y su lugar en tu escritorio.</p>
+        <div class="card"><label for="name">Nombre</label><input id="name" type="text" name="name" maxlength="40" required data-setting /><label for="personality">Personalidad</label><textarea id="personality" name="personality" maxlength="1000" rows="3" data-setting></textarea><p class="hint">Por ejemplo: tranquilo, bromista y atento.</p></div>
+        <div class="card"><label for="scale">Tamaño en el escritorio</label><div class="range"><input id="scale" type="range" min="0.5" max="2" step="0.1" data-setting /><output id="scaleOut"></output></div><label class="check"><input id="wanderEnabled" type="checkbox" data-setting />Pasear por el escritorio</label><label for="sleep">Dormirse tras estos minutos sin interacción</label><input id="sleep" type="number" name="sleep" min="1" max="120" required data-setting /><label class="check"><input id="startup" type="checkbox" data-setting />Abrir Dark al iniciar Windows</label><p class="hint">El inicio automático requiere la versión instalada.</p></div>
       </section>
-
-      <!-- ================= MEMORIA ================= -->
-      <section data-tab="memoria">
-        <div class="card">
-          <div class="card-head">
-            <h2>🧠 Recordar cosas sobre mí<small>Lo que Dark sabe de ti entre conversaciones</small></h2>
-            <label class="switch"><input type="checkbox" id="memoryEnabled" /><span></span></label>
-          </div>
-          <ul class="list" id="memList"></ul>
-          <button type="button" id="memClear" class="danger">Borrar todos los recuerdos</button>
-        </div>
-        <div class="card">
-          <h2 style="font-size: 15px; margin: 0">⏰ Recordatorios pendientes</h2>
-          <ul class="list" id="remList"></ul>
-          <div class="hint">Pídeselos: "recuérdame tomar agua en 20 minutos".</div>
-        </div>
+      <section data-tab="tareas" aria-labelledby="tasksTitle" hidden>
+        <h2 id="tasksTitle">Recordatorios y foco</h2><p class="intro">Estas herramientas funcionan sin conectar la IA.</p>
+        <div class="card"><h3>Crear un recordatorio</h3><form id="quickReminder"><label for="reminderText">Qué quieres recordar</label><input id="reminderText" type="text" name="reminderText" maxlength="200" required placeholder="Por ejemplo: tomar agua…" /><label for="reminderMinutes">Avisarme dentro de (minutos)</label><div class="row"><input id="reminderMinutes" type="number" name="reminderMinutes" value="20" min="1" max="10080" required /><button type="submit">Crear recordatorio</button></div></form><p id="taskFeedback" class="hint" role="status"></p><h3 class="list-heading">Pendientes</h3><ul id="remList" class="list"></ul></div>
+        <div class="card"><h3>Pomodoro</h3><p id="focusPhase" class="hint">Alterna concentración y descanso.</p><div class="row timing"><div><label for="focusMin">Foco (minutos)</label><input id="focusMin" type="number" name="focusMin" min="5" max="90" required data-setting /></div><div><label for="breakMin">Descanso (minutos)</label><input id="breakMin" type="number" name="breakMin" min="1" max="30" required data-setting /></div></div><div class="focus-control"><output id="focusClock">25:00</output><button id="focusToggle">Empezar foco</button></div></div>
+      </section>
+      <section data-tab="memoria" aria-labelledby="memoryTitle" hidden>
+        <h2 id="memoryTitle">Memoria</h2><p class="intro">Revisa qué recuerda Dark de ti y decide qué conservar.</p>
+        <div class="card"><label class="toggle" for="memoryEnabled"><span><strong>Recordar entre conversaciones</strong><small>Usa tus recuerdos para personalizar las respuestas.</small></span><input id="memoryEnabled" type="checkbox" data-setting /></label><p class="hint">Al desactivarlo, los recuerdos guardados se conservan pero no se usan en el chat.</p><ul id="memList" class="list"></ul><button id="memClear" class="danger">Borrar todos los recuerdos</button><div id="memoryStatus" class="status" role="status" hidden><span></span></div></div>
       </section>
     </main>
-    <script type="module" src="./settings.ts"></script>
-  </body>
+  </div>
+  <footer><div><span id="saved" role="status" aria-live="polite">Cargando ajustes…</span><button id="retryLoad" class="link" hidden>Volver a cargar</button></div><button id="saveSettings" class="primary" disabled>Guardar cambios</button></footer>
+  <script type="module" src="./settings.ts"></script>
+</body>
 </html>

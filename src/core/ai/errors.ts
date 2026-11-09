@@ -47,6 +47,7 @@ export async function fetchWithTimeout(
     outer?.removeEventListener('abort', onOuter)
   }
   try {
+    outer?.throwIfAborted()
     const res = await fetchImpl(url, { ...init, signal: ctrl.signal })
     return { res, done }
   } catch (e) {

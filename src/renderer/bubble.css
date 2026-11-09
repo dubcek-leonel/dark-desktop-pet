@@ -1,0 +1,33 @@
+html,body { margin:0;background:transparent;overflow:hidden;color:#edf4ff;font:14px 'Segoe UI',system-ui,sans-serif; }
+#wrap { position:absolute;left:6px;right:6px;bottom:14px; }
+#wrap::after {content:'';position:absolute;left:50%;bottom:-6px;width:12px;height:12px;background:#0d1524;border-right:1px solid #80719f;border-bottom:1px solid #80719f;transform:translateX(-50%) rotate(45deg);}
+.bubble { position:relative;background:linear-gradient(145deg,#162136,#0d1524);border:1px solid #80719f;border-radius:15px;padding:12px 14px;box-shadow:0 3px 8px #0005;max-height:370px;overflow-y:auto; }
+#close { position:absolute;right:8px;top:8px;border:0;background:none;color:#b5bfd0;cursor:pointer;font-size:14px; }
+.chat-heading { display:flex;gap:10px;align-items:center;padding-right:18px;margin-bottom:8px; }
+.chat-heading strong {font-size:12px;}
+.chat-heading small {color:#b5bfd0;font-size:11px;}
+#answer {line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;cursor:pointer;}
+#answer.error {color:#ffb4be;}
+#emptyHint {margin:0;color:#b5bfd0;}
+button {cursor:pointer;color:#e0d7ff;background:#1c2940;border:1px solid #53536e;border-radius:7px;padding:5px 9px;font:12px 'Segoe UI',sans-serif;}
+button:hover {border-color:#c3b1ff;}
+#controls,#notes,#pager {display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+#controls:has(button:not([hidden])) { margin-top:8px; }
+#controls:not(:has(button:not([hidden]))),#notes:empty,#alerts:empty {display:none;}
+#pager {justify-content:space-between;align-items:center;color:#b5bfd0;font-size:11px;}
+.note {font-size:12px;line-height:1.4;color:#d6cbff;background:#a78bfa12;border:1px solid #a78bfa55;border-radius:6px;padding:4px 7px;overflow-wrap:anywhere;}
+.note.warn {color:#ffb4be;border-color:#ff9ba855;}
+#alerts {max-height:110px;overflow:auto;}
+#alerts > div {border-top:1px solid #35435b;margin-top:10px;padding-top:8px;font-size:12px;line-height:1.5;overflow-wrap:anywhere;}
+#alerts span {display:block;margin-bottom:5px;}
+#alerts button {margin-right:4px;}
+#recent {margin-top:12px;color:#b5bfd0;font-size:11px;}
+#recent summary {cursor:pointer;}
+#history {max-height:110px;overflow:auto;}
+.turn {padding:8px 0;border-bottom:1px solid #35435b;font-size:12px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
+.turn small {display:block;color:#93a4bf;margin-bottom:4px;}
+.turn > div {color:#edf4ff;}
+.tools {display:flex;gap:6px;margin-top:8px;}
+.meter {height:5px;background:#27354c;border-radius:4px;overflow:hidden;margin-top:7px;}
+#meterBar {height:100%;width:0;background:#67e8f9;}
+.dots {color:#c3b1ff;}

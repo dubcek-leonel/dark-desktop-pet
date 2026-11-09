@@ -1,0 +1,11 @@
+/* Shared desktop surfaces: all fonts and assets work offline. */
+:root { color-scheme: dark; --bg:#0b101b; --panel:#131c2c; --panel2:#1b2840; --line:#2c3b54; --text:#edf4ff; --muted:#a6b5cd; --accent:#a78bfa; --cyan:#67e8f9; --ok:#7de2bb; --err:#ff9ba8; --warn:#f9d58a; }
+body { font-family:'Segoe UI',system-ui,sans-serif; }
+button, input, textarea, select { font:inherit; }
+button { transition:background .16s,border-color .16s; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; }
+button:disabled { cursor:default; opacity:.5; }
+[hidden] { display:none !important; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-thumb { background:#3a4d6e; border-radius:6px; }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }

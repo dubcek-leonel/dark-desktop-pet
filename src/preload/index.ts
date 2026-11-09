@@ -9,7 +9,13 @@ const SEND = [
   'pet:dragEnd',
   'pet:contextmenu',
   'chat:send',
+  'chat:reset',
+  'settings:open',
+  'settings:getKey',
+  'chat:cancel',
+  'chat:retry',
   'chat:close',
+  'chat:dismiss',
   'chat:action',
   'chat:mic',
   'voice:utterance',
@@ -32,6 +38,9 @@ const ON = [
   'chat:level'
 ] as const
 const INVOKE = [
+  'app:overview',
+  'app:command',
+  'chat:snapshot',
   'config:get',
   'config:save',
   'ai:listModels',

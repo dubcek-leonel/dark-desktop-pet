@@ -33,6 +33,7 @@ export function createOpenAICompat(o: OpenAICompatOptions): AIProvider {
       try {
         if (!res.ok) throw await errorFromResponse(res)
         if (!res.body) throw new AIError('http', 'Respuesta vacía')
+        let complete = false
         let full = ''
         let buf = ''
         const reader = res.body.getReader()
@@ -41,15 +42,20 @@ export function createOpenAICompat(o: OpenAICompatOptions): AIProvider {
           const l = line.trim()
           if (!l.startsWith('data:')) return false
           const data = l.slice(5).trim()
-          if (data === '[DONE]') return true
+          if (data === '[DONE]') { complete = true; return true }
           try {
-            const j = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> }
+            const j = JSON.parse(data) as { error?: { message?: string }; choices?: Array<{ delta?: { content?: string }; finish_reason?: string }> }
+            if (j.error) throw new AIError('http', j.error.message || 'La IA devolvió un error')
+            const reason = j.choices?.[0]?.finish_reason
+            if (reason && reason !== 'stop') throw new AIError('http', 'La respuesta quedó incompleta. Intenta otra vez.')
+            if (reason === 'stop') complete = true
             const t = j.choices?.[0]?.delta?.content
             if (t) {
               full += t
               onToken(t)
             }
-          } catch {
+          } catch (e) {
+            if (e instanceof AIError) throw e
             /* línea incompleta o no JSON: se ignora */
           }
           return false
@@ -66,6 +72,7 @@ export function createOpenAICompat(o: OpenAICompatOptions): AIProvider {
           }
         }
         if (buf) handleLine(buf)
+        if (!complete) throw new AIError('network', 'La conexión se cortó antes de completar la respuesta')
         return full
       } finally {
         done()

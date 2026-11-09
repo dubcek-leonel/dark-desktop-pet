@@ -7,10 +7,14 @@
     <style>
       html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; user-select: none; }
       canvas { display: block; }
+      #petStatus { position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font:600 10px 'Segoe UI',sans-serif;color:#edf4ff;background:#101a2de8;border:1px solid #67e8f966;border-radius:20px;padding:4px 9px;pointer-events:none;white-space:nowrap; }
+      #petStatus[hidden] { display:none; }
+      @media(prefers-reduced-motion:reduce) { #petStatus { transition:none; } }
     </style>
   </head>
   <body>
-    <canvas id="pet" width="256" height="256"></canvas>
+    <canvas id="pet" width="256" height="256" aria-label="Dark, tu compañero de escritorio" title="Un clic: saludar · Doble clic: animación · Clic derecho: conversar y opciones"></canvas>
+    <div id="petStatus" role="status" hidden></div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

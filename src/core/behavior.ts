@@ -45,6 +45,7 @@ export interface Env {
   durationOf: (anim: string) => number
   /** Tiempo sin interacción antes de dormirse. */
   sleepAfterMs: number
+  wanderEnabled?: boolean
 }
 
 export interface Pet {
@@ -66,6 +67,7 @@ export interface Pet {
   ai: 'idle' | 'thinking' | 'talking'
   /** Pomodoro en foco: Dark trabaja en vez de pasear o dormir. */
   working: boolean
+  engaged: boolean
 }
 
 export type PetEvent =
@@ -81,6 +83,9 @@ export type PetEvent =
   | { type: 'aiTalking' }
   | { type: 'aiDone'; emotion: Emotion }
   | { type: 'dance' }
+  | { type: 'play' }
+  | { type: 'sit' }
+  | { type: 'conversation'; on: boolean }
 
 // Medidas del sprite (en píxeles del frame de 256).
 const FEET_Y = 244
@@ -151,7 +156,8 @@ export function createPet(env: Env, x: number): Pet {
     clicks: [],
     clock: 0,
     ai: 'idle',
-    working: false
+    working: false,
+    engaged: false
   }
 }
 
@@ -184,12 +190,12 @@ export function step(prev: Pet, dtMs: number, env: Env): Pet {
     return p
   }
 
-  const sleepy = p.idleFor >= env.sleepAfterMs && p.ai === 'idle'
+  const sleepy = p.idleFor >= env.sleepAfterMs && p.ai === 'idle' && !p.engaged
 
   switch (p.state) {
     case 'idle':
       if (sleepy) return enter(p, 'yawn')
-      if (p.t >= p.wait) return chooseNext(p, env)
+      if (!p.engaged && env.wanderEnabled !== false && p.t >= p.wait) return chooseNext(p, env)
       return p
 
     case 'walk': {
@@ -235,6 +241,22 @@ export function step(prev: Pet, dtMs: number, env: Env): Pet {
 
 export function handle(p: Pet, ev: PetEvent, env: Env): Pet {
   switch (ev.type) {
+    case 'conversation': {
+      const q = { ...p, engaged: ev.on, idleFor: 0 }
+      if (AIRBORNE.has(q.state) || q.ai !== 'idle') return q
+      if (ev.on && (q.state === 'sleep' || q.state === 'yawn')) return enter(q, 'wake_up')
+      return toIdle(q, env)
+    }
+    case 'sit':
+      if (AIRBORNE.has(p.state) || p.ai !== 'idle') return p
+      return enter({ ...p, idleFor: 0 }, 'sit_down')
+    case 'play':
+      if (p.state === 'sleep' || p.state === 'yawn') return enter({ ...p, idleFor: 0 }, 'wake_up')
+      if (p.state === 'hang') return enter(p, 'fall', { vy: 0 })
+      if (AIRBORNE.has(p.state) || p.ai !== 'idle') return p
+      return env.rand() < 0.5
+        ? enter({ ...p, idleFor: 0 }, 'dance', { wait: randomBetween(env, 4000, 8000) })
+        : enter({ ...p, idleFor: 0 }, 'surprised')
     case 'click': {
       const q = { ...p, idleFor: 0 }
       if (q.state === 'sleep' || q.state === 'yawn') return enter(q, 'wake_up')

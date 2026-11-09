@@ -148,3 +148,19 @@ describe('mensajes de error para el usuario', () => {
     expect(friendlyError(new Error('raro'))).toMatch(/raro/)
   })
 })
+
+
+describe('incomplete streams', () => {
+  it('rejects truncated SSE before accepting partial actions', async () => {
+    const ai = createOpenAICompat({ baseUrl: 'https://x.test', apiKey: 'k', model: 'm', fetchImpl: async () => streamResponse(sse('partial').slice(0, -1)) })
+    await expect(ai.chat([], () => {})).rejects.toMatchObject({ kind: 'network' })
+  })
+  it('rejects truncated Ollama streams', async () => {
+    const ai = createOllama({ baseUrl: 'http://localhost', model: 'm', fetchImpl: async () => streamResponse([JSON.stringify({ message: { content: 'partial' } })]) })
+    await expect(ai.chat([], () => {})).rejects.toMatchObject({ kind: 'network' })
+  })
+  it('reports provider errors inside an SSE stream', async () => {
+    const ai = createOpenAICompat({ baseUrl: 'https://x.test', apiKey: 'k', model: 'm', fetchImpl: async () => streamResponse(['data: {"error":{"message":"failed"}}\n\n']) })
+    await expect(ai.chat([], () => {})).rejects.toMatchObject({ kind: 'http' })
+  })
+})

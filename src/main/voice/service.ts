@@ -20,6 +20,7 @@ export interface VoiceDeps {
   onLevel?: (level: number) => void
   /** Lo que el usuario dijo, para mandarlo al chat. Termina cuando Dark acabó de responder. */
   onCommand: (text: string) => Promise<void>
+  chatBusy?: () => boolean
   load: (win: BrowserWindow, page: string) => void
   log?: (msg: string) => void
 }
@@ -47,10 +48,13 @@ export class VoiceService {
   private stt = new WhisperServer()
   private playSeq = 0
   private plays = new Map<number, () => void>()
+  private conversationGen = 0
+  private listenGen = 0
   private listenPurpose: ListenPurpose | null = null
   private listenResolve: ((text: string | null) => void) | null = null
   private speakingNow = false
   private speakGen = 0
+  private interruptSpeech: (() => void) | null = null
   private speakQueue: Promise<void> = Promise.resolve()
 
   constructor(private deps: VoiceDeps) {
@@ -212,13 +216,13 @@ export class VoiceService {
   }
 
   /** Dice un texto en voz alta. Las frases se generan mientras suena la anterior. */
-  speak(text: string, override?: Partial<Pick<Config, 'voiceEngine' | 'voiceId' | 'geminiVoice' | 'voiceSpeed' | 'voicePitch'>>): Promise<void> {
+  speak(text: string, override?: Partial<Pick<Config, 'voiceEngine' | 'voiceId' | 'geminiVoice' | 'voiceSpeed' | 'voicePitch'>>, reportErrors = false): Promise<void> {
     const gen = this.speakGen
     const job = this.speakQueue
       .then(() => (gen === this.speakGen ? this.doSpeak(text, override) : undefined))
       .catch((e) => {
         this.deps.log?.(`voz: ${String(e)}`)
-        if (override) throw e
+        if (override || reportErrors) throw e
       })
     this.speakQueue = job.catch(() => {})
     return job
@@ -245,15 +249,21 @@ export class VoiceService {
     const gen = this.speakGen
     this.speakingNow = true
     void this.sendMode() // silencia el micrófono mientras habla (para no escucharse a sí mismo)
+    const interrupted = new Promise<null>((resolve) => { this.interruptSpeech = () => resolve(null) })
     try {
       let next = this.synth(sentences[0], opts)
       for (let i = 0; i < sentences.length; i++) {
-        const wav = await next
+        const wav = await Promise.race([next, interrupted])
+        if (!wav) return
         if (gen !== this.speakGen) return // lo interrumpieron
-        if (i + 1 < sentences.length) next = this.synth(sentences[i + 1], opts)
+        if (i + 1 < sentences.length) {
+          next = this.synth(sentences[i + 1], opts)
+          void next.catch(() => {})
+        }
         await this.play(wav, rate)
       }
     } finally {
+      this.interruptSpeech = null
       this.speakingNow = false
       void this.sendMode()
     }
@@ -262,6 +272,9 @@ export class VoiceService {
   /** Corta lo que esté diciendo (por ejemplo, si le haces clic). */
   stopSpeaking(): void {
     this.speakGen++
+    this.interruptSpeech?.()
+    for (const resolve of this.plays.values()) resolve()
+    this.plays.clear()
     void this.send('voice:stopPlayback', null)
   }
 
@@ -270,6 +283,7 @@ export class VoiceService {
   private endListening(text: string | null): void {
     const was = this.listenPurpose
     this.listenPurpose = null
+    this.listenGen++
     if (was && was !== 'test') this.deps.pet({ type: 'listening', on: false })
     this.deps.onLevel?.(0)
     void this.sendMode()
@@ -283,7 +297,17 @@ export class VoiceService {
    * (si no dices nada, se calla); 'test': prueba del micrófono en Ajustes.
    * Devuelve lo que entendió (o null).
    */
+  isListening(): boolean { return this.listenPurpose !== null }
+
+  stopListening(): void {
+    this.conversationGen++
+    const active = this.listenPurpose !== null
+    if (active) this.endListening(null)
+    if (active) this.deps.ui({ state: 'ready' })
+  }
+
   async listenOnce(purpose: ListenPurpose = 'chat'): Promise<string | null> {
+    if (purpose !== 'test' && this.deps.chatBusy?.()) return null
     if (this.sttEngine() === null) {
       if (purpose !== 'followup') {
         this.deps.ui({
@@ -295,14 +319,23 @@ export class VoiceService {
     }
     if (this.listenPurpose) this.endListening(null)
     this.stopSpeaking()
-    if (this.sttEngine() === 'whisper' && !this.stt.isRunning()) await this.apply()
+    const generation = ++this.listenGen
+    this.listenPurpose = purpose
+    const result = new Promise<string | null>((resolve) => (this.listenResolve = resolve))
     if (purpose !== 'test') {
       this.deps.ui({ state: 'listening' })
       this.deps.pet({ type: 'listening', on: true })
     }
-    this.listenPurpose = purpose
-    const result = new Promise<string | null>((resolve) => (this.listenResolve = resolve))
-    await this.sendMode()
+    try {
+      if (this.sttEngine() === 'whisper' && !this.stt.isRunning()) await this.apply()
+      if (generation !== this.listenGen) return result
+      await this.sendMode()
+    } catch (e) {
+      if (generation === this.listenGen) {
+        this.endListening(null)
+        this.deps.ui({ state: 'error', text: `No pude iniciar el micrófono: ${e instanceof Error ? e.message : String(e)}` })
+      }
+    }
     return result
   }
 
@@ -317,19 +350,22 @@ export class VoiceService {
 
   private async onUtterance(wav: Uint8Array, mode: 'wake' | 'command'): Promise<void> {
     const purpose = this.listenPurpose
+    const generation = this.listenGen
     if (mode === 'command' && purpose) {
-      if (purpose !== 'test') this.deps.ui({ state: 'notice', text: '✍️ Entendiendo…' })
+      if (purpose !== 'test') this.deps.ui({ state: 'transcribing' })
     }
     let text = ''
     try {
       text = await this.transcribe(wav)
     } catch (e) {
+      if (mode === 'command' && generation !== this.listenGen) return
       if (mode === 'command') {
         this.endListening(null)
         this.deps.ui({ state: 'error', text: `No pude entenderte: ${String(e instanceof Error ? e.message : e)}` })
       }
       return
     }
+    if (mode === 'command' && (!purpose || generation !== this.listenGen || purpose !== this.listenPurpose)) return
     this.deps.log?.(`oído (${mode}/${purpose ?? '-'}): ${text}`)
 
     if (mode === 'command') {
@@ -359,8 +395,9 @@ export class VoiceService {
 
   /** Manda lo dicho al chat y, si está activado, sigue escuchando para continuar la charla. */
   private async converse(text: string): Promise<void> {
+    const generation = this.conversationGen
     await this.deps.onCommand(text)
-    if (this.deps.getConfig().conversationMode && this.canListen()) {
+    if (generation === this.conversationGen && this.deps.getConfig().conversationMode && this.canListen()) {
       await this.listenOnce('followup')
     }
   }

@@ -17,6 +17,10 @@ window.api.on('pet:anim', (msg: { anim: string; facing: 1 | -1; restart?: boolea
   if (msg.anim !== anim || msg.restart) startedAt = performance.now()
   anim = msg.anim
   facing = msg.facing
+  const labels: Record<string, string> = { think: 'Pensando…', talk: 'Hablando', listen: 'Te escucho', work: 'En foco', sleep: 'Descansando' }
+  const badge = document.getElementById('petStatus')!
+  badge.textContent = labels[anim] ?? ''
+  badge.hidden = !labels[anim]
 })
 
 function fitCanvas(): void {
@@ -62,26 +66,27 @@ function setOver(hit: boolean): void {
   }
 }
 
-let down: { x: number; y: number } | null = null
+let down: { x: number; y: number; offsetX: number; offsetY: number } | null = null
 let dragging = false
 const DRAG_THRESHOLD = 4
 
-window.addEventListener('mousemove', (e) => {
+window.addEventListener('pointermove', (e) => {
   if (down && !dragging) {
     if (Math.hypot(e.screenX - down.x, e.screenY - down.y) > DRAG_THRESHOLD) {
       dragging = true
-      window.api.send('pet:dragStart', { offsetX: e.offsetX, offsetY: e.offsetY })
+      window.api.send('pet:dragStart', { offsetX: down.offsetX, offsetY: down.offsetY })
     }
   }
   if (!dragging) setOver(isOpaque(e.offsetX, e.offsetY))
 })
 
-window.addEventListener('mousedown', (e) => {
+window.addEventListener('pointerdown', (e) => {
   if (e.button !== 0 || !isOpaque(e.offsetX, e.offsetY)) return
-  down = { x: e.screenX, y: e.screenY }
+  canvas.setPointerCapture(e.pointerId)
+  down = { x: e.screenX, y: e.screenY, offsetX: e.offsetX, offsetY: e.offsetY }
 })
 
-window.addEventListener('mouseup', (e) => {
+window.addEventListener('pointerup', (e) => {
   if (e.button !== 0) return
   if (dragging) window.api.send('pet:dragEnd')
   else if (down) {
@@ -94,6 +99,17 @@ window.addEventListener('mouseup', (e) => {
   }
   down = null
   dragging = false
+})
+
+window.addEventListener('pointercancel', () => {
+  if (dragging) window.api.send('pet:dragEnd')
+  dragging = false
+  down = null
+})
+window.addEventListener('blur', () => {
+  if (dragging) window.api.send('pet:dragEnd')
+  dragging = false
+  down = null
 })
 
 let clickTimer: ReturnType<typeof setTimeout> | null = null
@@ -111,5 +127,5 @@ window.addEventListener('mouseleave', () => {
 
 window.addEventListener('contextmenu', (e) => {
   e.preventDefault()
-  window.api.send('pet:contextmenu')
+  if (isOpaque(e.offsetX, e.offsetY)) window.api.send('pet:contextmenu')
 })

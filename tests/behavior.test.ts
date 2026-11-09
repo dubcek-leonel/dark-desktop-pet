@@ -206,3 +206,38 @@ describe('cambio de pantalla', () => {
     expect(p.x).toBeLessThanOrEqual(1280 - 206)
   })
 })
+
+
+describe('desktop conversation interaction', () => {
+  it('stays with the user while the writing bar is open and resumes afterwards', () => {
+    const env = makeEnv({}, [0, 0.1, 0.9])
+    let p = handle(createPet(env, 500), { type: 'conversation', on: true }, env)
+    p = run(p, 90_000, env)
+    expect(p.engaged).toBe(true)
+    expect(p.state).toBe('idle')
+    expect(p.x).toBe(500)
+    p = handle(p, { type: 'conversation', on: false }, env)
+    expect(p.engaged).toBe(false)
+    p = run(p, 9000, env)
+    expect(p.state).not.toBe('sleep')
+  })
+  it('respects the menu setting that disables wandering', () => {
+    const env = makeEnv({ wanderEnabled: false })
+    const p = run(createPet(env, 500), 40_000, env)
+    expect(p.state).toBe('idle')
+    expect(p.x).toBe(500)
+  })
+  it('double click plays an animation without interrupting an AI response', () => {
+    const env = makeEnv({}, [0.1])
+    const p = handle(createPet(env, 500), { type: 'play' }, env)
+    expect(p.state).toBe('dance')
+    const thinking = handle(p, { type: 'aiThinking' }, env)
+    expect(handle(thinking, { type: 'play' }, env).state).toBe('think')
+  })
+  it('double click wakes a sleeping pet and releases a hanging pet', () => {
+    const env = makeEnv()
+    const p = createPet(env, 500)
+    expect(handle({ ...p, state:'sleep', anim:'sleep' }, { type:'play' }, env).state).toBe('wake_up')
+    expect(handle({ ...p, state:'hang', anim:'hang' }, { type:'play' }, env).state).toBe('fall')
+  })
+})

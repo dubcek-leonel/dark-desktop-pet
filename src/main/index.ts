@@ -1,5 +1,6 @@
+import { parseCompanionAction, type CompanionOverview } from '../core/companion'
 import { join } from 'node:path'
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, Notification, session, Tray } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, Notification, session, shell, Tray } from 'electron'
 import { createOllama } from '../core/ai/ollama'
 import { createOpenAICompat } from '../core/ai/openaiCompat'
 import { friendlyError } from '../core/ai/errors'
@@ -75,7 +76,7 @@ function makeProvider(provider: ProviderId, baseUrl: string, model: string, apiK
   return createOpenAICompat({ baseUrl, model, apiKey })
 }
 
-const bubble = new Bubble(loadPage)
+const bubble = new Bubble(loadPage, (on) => controller?.dispatch({ type: 'conversation', on }))
 
 const voice: VoiceService = new VoiceService({
   getConfig: () => config,
@@ -87,6 +88,7 @@ const voice: VoiceService = new VoiceService({
     settingsWin?.webContents.send('voice:level', level)
   },
   onCommand: (text: string): Promise<void> => chat.send(text),
+  chatBusy: () => chat.isBusy(),
   load: loadPage,
   log: (m) => console.log(`[voz] ${m}`)
 })
@@ -216,7 +218,8 @@ const chat: ChatService = new ChatService({
     settingsChanged()
   },
   onActions: runActions,
-  speak: (t: string): Promise<void> => voice.speak(t)
+  speak: (t: string): Promise<void> => voice.speak(t, undefined, true),
+  stopSpeaking: () => voice.stopSpeaking()
 })
 
 const pomodoro = new PomodoroManager(
@@ -286,7 +289,9 @@ function openSettings(): void {
     return
   }
   settingsWin = new BrowserWindow({
-    width: 500,
+    width: 760,
+    minWidth: 560,
+    minHeight: 560,
     height: 760,
     title: `Ajustes de ${config.name}`,
     icon: assetPath('icon-512.png'),
@@ -304,6 +309,8 @@ function openSettings(): void {
 function togglePet(): void {
   if (!pet) return
   if (pet.isVisible()) {
+    voice.stopListening()
+    voice.stopSpeaking()
     pet.hide()
     bubble.hide()
   } else pet.showInactive()
@@ -319,10 +326,17 @@ function buildMenu(): Menu {
         }
       : { label: `Detener Pomodoro (${p.phase === 'focus' ? 'foco' : 'descanso'})`, click: () => pomodoro.stop() }
   return Menu.buildFromTemplate([
-    { label: `Hablar con ${config.name}`, click: () => bubble.open() },
+    { label: `Conversar con ${config.name}`, click: () => bubble.open() },
+    { label: 'Hablar por voz', accelerator: config.pushToTalkKey, click: () => { bubble.open(); if (!chat.isBusy()) void voice.listenOnce('chat') } },
     pomodoroItem,
-    { label: 'Bailar', click: () => controller?.dispatch({ type: 'dance' }) },
-    { label: 'Olvidar la conversación', click: () => chat.reset() },
+    { label: 'Acciones', submenu: [
+      { label: 'Saludar', click: () => greetPet() },
+      { label: 'Bailar', click: () => controller?.dispatch({ type: 'dance' }) },
+      { label: 'Sentarse', click: () => controller?.dispatch({ type: 'sit' }) },
+      { label: 'Dormir', click: () => controller?.dispatch({ type: 'sleep' }) }
+    ] },
+    { label: 'Pasear por el escritorio', type: 'checkbox', checked: config.wanderEnabled, click: (item) => { config.wanderEnabled = item.checked; saveConfig(config); applyConfig() } },
+    { label: 'Tamaño', submenu: [0.6, 1, 1.4].map((scale, i) => ({ label: ['Pequeño', 'Mediano', 'Grande'][i], type: 'radio' as const, checked: config.scale === scale, click: () => { config.scale = scale; saveConfig(config); applyConfig() } })) },
     { type: 'separator' },
     { label: 'Ajustes…', click: openSettings },
     { label: `Mostrar / ocultar a ${config.name}`, click: togglePet },
@@ -345,7 +359,7 @@ function createTray(): Tray {
 }
 
 function applyConfig(): void {
-  controller?.setOptions({ scale: config.scale, sleepAfterMs: config.sleepAfterMinutes * 60_000 })
+  controller?.setOptions({ scale: config.scale, sleepAfterMs: config.sleepAfterMinutes * 60_000, wanderEnabled: config.wanderEnabled })
   if (!pomodoro.isRunning()) tray?.setToolTip(config.name)
   refreshTray()
   if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: config.startWithWindows })
@@ -359,7 +373,8 @@ function registerShortcuts(): void {
   try {
     globalShortcut.register(config.pushToTalkKey, () => {
       pet?.showInactive()
-      void voice.listenOnce('chat')
+      if (voice.isListening()) voice.stopListening()
+      else if (!chat.isBusy()) { bubble.open(); void voice.listenOnce('chat') }
     })
   } catch (e) {
     console.warn('No se pudo registrar el atajo', config.pushToTalkKey, e)
@@ -371,12 +386,20 @@ function registerShortcuts(): void {
 ipcMain.on('pet:hit', (_e, overPet: unknown) => {
   pet?.setIgnoreMouseEvents(overPet !== true, { forward: true })
 })
-ipcMain.on('pet:click', () => {
-  // Si está hablando, un clic lo hace callar.
-  if (voice.isSpeaking()) voice.stopSpeaking()
-  else controller?.dispatch({ type: 'click' })
-})
-ipcMain.on('pet:dblclick', () => bubble.open())
+function greetPet(): void {
+  if (chat.isBusy()) {
+    if (voice.isSpeaking()) voice.stopSpeaking()
+    return
+  }
+  const sleeping = controller?.state.state === 'sleep' || controller?.state.state === 'yawn'
+  controller?.dispatch({ type: 'click' })
+  const greetings = ['Aquí estoy. ¿Qué hacemos?', 'Hola. Me alegra verte por aquí.', '¿Me llamabas? Clic derecho si quieres conversar.']
+  const text = pomodoro.isRunning() ? `Seguimos con el Pomodoro. Faltan ${formatRemaining(pomodoro.remainingMs())}.` : sleeping ? 'Ya desperté. ¿Qué necesitas?' : greetings[Math.floor(Math.random() * greetings.length)]
+  bubble.update({ state: 'caption', text })
+  void voice.speak(text)
+}
+ipcMain.on('pet:click', greetPet)
+ipcMain.on('pet:dblclick', () => { if (!chat.isBusy()) controller?.dispatch({ type: 'play' }) })
 ipcMain.on('pet:dragStart', (_e, o: { offsetX?: unknown; offsetY?: unknown }) => {
   controller?.startDrag(Number(o?.offsetX) || 0, Number(o?.offsetY) || 0)
 })
@@ -385,10 +408,52 @@ ipcMain.on('pet:contextmenu', () => {
   if (pet) buildMenu().popup({ window: pet })
 })
 
-ipcMain.on('chat:send', (_e, text: unknown) => {
-  if (typeof text === 'string') void chat.send(text)
+ipcMain.handle('app:overview', (): CompanionOverview => ({
+  name: config.name,
+  configured: !!config.model && (config.provider === 'ollama' || hasApiKey(config.provider)),
+  voice: voice.canSpeak(),
+  listening: voice.canListen(),
+  memories: memories.length,
+  reminders: reminders.all().length,
+  focus: { phase: pomodoro.state.phase, remainingMs: pomodoro.remainingMs(), ...pomodoro.config() }
+}))
+ipcMain.handle('app:command', (_e, input: unknown) => {
+  try {
+    const action = parseCompanionAction(input)
+    let text = ''
+    switch (action.type) {
+      case 'chat': bubble.open(); break
+      case 'greet': controller?.dispatch({ type: 'alert' }); text = `${config.name} te saluda.`; break
+      case 'focusStart':
+        if (!pomodoro.isRunning()) pomodoro.start()
+        text = 'Pomodoro activo. Vamos paso a paso.'
+        break
+      case 'focusStop': pomodoro.stop(); text = 'Pomodoro terminado.'; break
+      case 'reminder': {
+        const [r] = reminders.add([{ text: action.text, at: Date.now() + action.minutes * 60_000 }])
+        text = `Te recordaré: ${r.text}, ${formatWhen(r.at, Date.now())}.`
+        break
+      }
+    }
+    settingsChanged()
+    return { ok: true, text }
+  } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'No pude realizar la acción.' } }
 })
+ipcMain.on('settings:open', openSettings)
+ipcMain.on('settings:getKey', () => { void shell.openExternal('https://aistudio.google.com/apikey').catch((e) => console.warn('No se pudo abrir el navegador', e)) })
+ipcMain.on('chat:reset', () => {
+  chat.reset()
+})
+ipcMain.handle('chat:snapshot', () => chat.snapshot())
+ipcMain.on('chat:cancel', () => chat.cancel())
+ipcMain.on('chat:retry', () => void chat.retry())
+ipcMain.on('chat:send', (_e, text: unknown) => {
+  if (typeof text === 'string') { voice.stopListening(); if (!chat.isBusy()) voice.stopSpeaking(); void chat.send(text) }
+})
+ipcMain.on('chat:dismiss', () => { bubble.dismiss(); voice.stopSpeaking() })
 ipcMain.on('chat:close', () => {
+  voice.stopListening()
+  voice.stopSpeaking()
   bubble.hide()
   void chat.flushMemory()
 })
@@ -408,7 +473,10 @@ ipcMain.on('chat:action', (_e, id: unknown) => {
     bubble.hide()
   }
 })
-ipcMain.on('chat:mic', () => void voice.listenOnce('chat'))
+ipcMain.on('chat:mic', () => {
+  if (voice.isListening()) voice.stopListening()
+  else if (!chat.isBusy()) void voice.listenOnce('chat')
+})
 
 ipcMain.handle('voice:micTest', async () => {
   try {
@@ -469,11 +537,12 @@ ipcMain.handle('config:get', () => ({ config, hasKey: keyStatus(), presets: PROV
 
 ipcMain.handle('config:save', (_e, payload: { config?: unknown; apiKey?: unknown }) => {
   try {
-    config = normalizeConfig(payload?.config)
-    saveConfig(config)
-    if (typeof payload?.apiKey === 'string' && payload.apiKey.trim()) setApiKey(config.provider, payload.apiKey)
+    const next = normalizeConfig(payload?.config)
+    if (typeof payload?.apiKey === 'string' && payload.apiKey.trim()) setApiKey(next.provider, payload.apiKey)
+    saveConfig(next)
+    config = next
     applyConfig()
-    return { ok: true, hasKey: keyStatus() }
+    return { ok: true, config, hasKey: keyStatus() }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
@@ -548,8 +617,9 @@ app.whenReady().then(() => {
   config = loadConfig()
   memories = loadMemories()
   pet = createPetWindow(Math.round(256 * config.scale))
-  controller = new PetController(pet, { scale: config.scale, sleepAfterMs: config.sleepAfterMinutes * 60_000 })
+  controller = new PetController(pet, { scale: config.scale, sleepAfterMs: config.sleepAfterMinutes * 60_000, wanderEnabled: config.wanderEnabled })
   controller.onMove((r) => bubble.follow(r))
+  bubble.follow(pet.getBounds())
   pet.webContents.on('did-finish-load', () => controller?.resend())
   controller.start()
   tray = createTray()
@@ -566,7 +636,7 @@ app.whenReady().then(() => {
     setTimeout(() => {
       bubble.update({
         state: 'notice',
-        text: 'Ugh, para hablar necesito una API key. Te abrí los Ajustes, pégala ahí.'
+        text: 'Conecta tu IA en Ajustes → Conexión. Puedes elegir un servicio con clave o usar Ollama en tu PC.'
       })
       openSettings()
     }, 1500)
