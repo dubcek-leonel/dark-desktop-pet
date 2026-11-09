@@ -5,3 +5,7 @@ dist/
 *.log
 .env
 .env.*
+
+# Skills de agentes (se restauran con skills-lock.json)
+.agents/
+.claude/
