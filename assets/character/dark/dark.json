@@ -1,0 +1,212 @@
+{
+  "name": "Dark",
+  "format": "RGBA PNG",
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "facing": "right",
+  "groundY": 244,
+  "atlas": "dark-atlas.png",
+  "animations": {
+    "idle": {
+      "frames": 8,
+      "durationMs": 150,
+      "loop": true,
+      "row": 0,
+      "sheet": "idle.png",
+      "framePattern": "frames/idle/idle_%02d.png",
+      "anchor": "feet baseline y=244"
+    },
+    "walk": {
+      "frames": 8,
+      "durationMs": 100,
+      "loop": true,
+      "row": 1,
+      "sheet": "walk.png",
+      "framePattern": "frames/walk/walk_%02d.png",
+      "anchor": "feet baseline y=244"
+    },
+    "drag": {
+      "frames": 3,
+      "durationMs": 150,
+      "loop": true,
+      "row": 2,
+      "sheet": "drag.png",
+      "framePattern": "frames/drag/drag_%02d.png",
+      "anchor": "feet baseline y=244"
+    },
+    "fall": {
+      "frames": 4,
+      "durationMs": 110,
+      "loop": true,
+      "row": 3,
+      "sheet": "fall.png",
+      "framePattern": "frames/fall/fall_%02d.png",
+      "anchor": "feet baseline y=244"
+    },
+    "talk": {
+      "frames": 4,
+      "durationMs": 140,
+      "loop": true,
+      "row": 4,
+      "sheet": "talk.png",
+      "framePattern": "frames/talk/talk_%02d.png",
+      "anchor": "feet baseline y=244"
+    },
+    "sit": {
+      "frames": 4,
+      "durationMs": 220,
+      "loop": true,
+      "row": 5,
+      "sheet": "sit.png",
+      "framePattern": "frames/sit/sit_%02d.png",
+      "anchor": "feet baseline y=244"
+    },
+    "sleep": {
+      "frames": 4,
+      "durationMs": 300,
+      "loop": true,
+      "row": 6,
+      "sheet": "sleep.png",
+      "framePattern": "frames/sleep/sleep_%02d.png",
+      "anchor": "feet baseline y=244"
+    },
+    "hang": {
+      "frames": 4,
+      "durationMs": 180,
+      "loop": true,
+      "row": 7,
+      "sheet": "hang.png",
+      "framePattern": "frames/hang/hang_%02d.png",
+      "anchor": "top hands at y=12"
+    },
+    "land": {
+      "frames": 3,
+      "durationMs": 100,
+      "loop": false,
+      "row": 8,
+      "sheet": "land.png",
+      "framePattern": "frames/land/land_%02d.png",
+      "anchor": "feet baseline y=244"
+    },
+    "think": {
+      "frames": 4,
+      "durationMs": 240,
+      "loop": true,
+      "row": 9,
+      "sheet": "think.png",
+      "framePattern": "frames/think/think_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    },
+    "listen": {
+      "frames": 4,
+      "durationMs": 180,
+      "loop": true,
+      "row": 10,
+      "sheet": "listen.png",
+      "framePattern": "frames/listen/listen_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    },
+    "wave": {
+      "frames": 6,
+      "durationMs": 110,
+      "loop": false,
+      "row": 11,
+      "sheet": "wave.png",
+      "framePattern": "frames/wave/wave_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    },
+    "happy": {
+      "frames": 4,
+      "durationMs": 130,
+      "loop": true,
+      "row": 12,
+      "sheet": "happy.png",
+      "framePattern": "frames/happy/happy_%02d.png",
+      "anchor": "center x=128; feet y=244; hop offsets in pixels: [0, 8, 14, 0]"
+    },
+    "sad": {
+      "frames": 4,
+      "durationMs": 260,
+      "loop": true,
+      "row": 13,
+      "sheet": "sad.png",
+      "framePattern": "frames/sad/sad_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    },
+    "angry": {
+      "frames": 4,
+      "durationMs": 170,
+      "loop": true,
+      "row": 14,
+      "sheet": "angry.png",
+      "framePattern": "frames/angry/angry_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    },
+    "surprised": {
+      "frames": 3,
+      "durationMs": 140,
+      "loop": false,
+      "row": 15,
+      "sheet": "surprised.png",
+      "framePattern": "frames/surprised/surprised_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    },
+    "click": {
+      "frames": 4,
+      "durationMs": 100,
+      "loop": false,
+      "row": 16,
+      "sheet": "click.png",
+      "framePattern": "frames/click/click_%02d.png",
+      "anchor": "center x=128; feet y=244; hop offsets in pixels: [0, 6, 10, 0]"
+    },
+    "sit_down": {
+      "frames": 4,
+      "durationMs": 140,
+      "loop": false,
+      "row": 17,
+      "sheet": "sit_down.png",
+      "framePattern": "frames/sit_down/sit_down_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    },
+    "yawn": {
+      "frames": 4,
+      "durationMs": 220,
+      "loop": false,
+      "row": 18,
+      "sheet": "yawn.png",
+      "framePattern": "frames/yawn/yawn_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    },
+    "wake_up": {
+      "frames": 4,
+      "durationMs": 180,
+      "loop": false,
+      "row": 19,
+      "sheet": "wake_up.png",
+      "framePattern": "frames/wake_up/wake_up_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    },
+    "work": {
+      "frames": 6,
+      "durationMs": 140,
+      "loop": true,
+      "row": 20,
+      "sheet": "work.png",
+      "framePattern": "frames/work/work_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    },
+    "dance": {
+      "frames": 8,
+      "durationMs": 100,
+      "loop": true,
+      "row": 21,
+      "sheet": "dance.png",
+      "framePattern": "frames/dance/dance_%02d.png",
+      "anchor": "center x=128; feet baseline y=244"
+    }
+  },
+  "centerX": 128,
+  "atlasColumns": 8,
+  "atlasRows": 22
+}

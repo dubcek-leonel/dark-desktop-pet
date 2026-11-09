@@ -1,0 +1,33 @@
+DARK — paquete completo ampliado
+
+PNG RGBA con fondo transparente. Todos los frames tienen 256 × 256 píxeles.
+22 animaciones: 9 anteriores y 13 nuevas. Total: 101 frames.
+Se conserva el dibujo original de los 42 frames anteriores; solo se ha centrado su posición horizontal.
+
+Estructura:
+  frames/<animacion>/<animacion>_00.png ...: frames individuales desde 00.
+  <animacion>.png: tira horizontal, una celda de 256 × 256 por frame.
+  dark-atlas.png: 8 columnas × 22 filas; una animación por fila.
+  dark.json: mismos campos frames, durationMs, loop, row, sheet y framePattern.
+  icon-512.png: cara en 512 × 512, transparente.
+  tray-32.png: cara simplificada en 32 × 32, transparente.
+
+Coordenadas:
+  Centro horizontal visible del personaje: x=128, con tolerancia de medio píxel por redondeo.
+  Suelo: borde inferior visible de los pies en y=244 (coordenada exclusiva).
+  happy: elevaciones de 0, 8, 14, 0 píxeles sobre el suelo.
+  click: elevaciones de 0, 6, 10, 0 píxeles sobre el suelo.
+  hang: manos ancladas arriba en y=12, como en el paquete anterior.
+  El tamaño de las nuevas poses se calibra con el ancho del pelo del frame idle original.
+  Los extremos de sit_down y wake_up reutilizan los frames exactos de los estados originales.
+
+Reproducción:
+  Todos miran a la derecha; voltear por código para mirar a la izquierda.
+  durationMs es la duración sugerida de CADA frame.
+  loop=false: reproducir una vez; después cambiar al estado que corresponda.
+  Cada frame ocupa exactamente 256 × 256, incluidas las áreas transparentes.
+  Origen del frame del atlas: x = indiceFrame*256; y = row*256.
+
+dark-nuevas-preview.gif y dark-nuevas-contacto.png son vistas previas con fondo de color.
+Los PNG de frames, tiras, atlas e íconos conservan transparencia real.
+Arte generado con la herramienta de imágenes integrada; exportación y alineación revisadas.
