@@ -1,38 +1,46 @@
+import { extractActions, type Action } from '../core/actions'
 import { displayText, extractEmotion } from '../core/ai/emotion'
 import { AIError, friendlyError } from '../core/ai/errors'
 import { buildSystemPrompt, type PersonaInput } from '../core/ai/persona'
 import type { AIProvider, ChatMessage } from '../core/ai/types'
 import type { Emotion, PetEvent } from '../core/behavior'
 import { buildExtractionMessages, parseMemoryList } from '../core/memory'
-import { extractReminders, type ReminderRequest } from '../core/reminders'
+
+export interface BubbleButton {
+  id: string
+  label: string
+}
 
 export type ChatUpdate =
   | { state: 'thinking'; question: string }
   | { state: 'talking'; text: string }
-  | { state: 'done'; text: string; emotion: Emotion }
+  | { state: 'done'; text: string; emotion: Emotion; notes?: string[] }
   | { state: 'error'; text: string }
-  | { state: 'notice'; text: string }
+  | { state: 'notice'; text: string; buttons?: BubbleButton[] }
 
 export interface ChatDeps {
   getProvider: () => AIProvider
   getPersona: () => PersonaInput
+  /** Estado actual de la app para que la IA lo sepa (recordatorios, Pomodoro…). */
+  getContext?: () => string[]
   pet: (ev: PetEvent) => void
   ui: (msg: ChatUpdate) => void
   onConfigProblem?: () => void
   memoryEnabled: () => boolean
   getMemories: () => string[]
   addMemories: (facts: string[]) => void
-  onReminders: (reminders: ReminderRequest[]) => void
+  /** Ejecuta las acciones pedidas; devuelve una confirmación por cada una. */
+  onActions: (actions: Action[]) => string[]
 }
 
 const MAX_HISTORY = 20
 const EXTRACT_EVERY = 3
 
-/** Conversación con la IA: historial, recuerdos y recordatorios. Avisa a Dark y a la burbuja. */
+/** Conversación con la IA: historial, recuerdos y acciones. Avisa a Dark y a la burbuja. */
 export class ChatService {
   private history: ChatMessage[] = []
   private busy = false
-  /** Intercambios (pregunta + respuesta) que aún no pasaron por la extracción de recuerdos. */
+  /** Intercambios que aún no pasaron por la extracción de recuerdos. */
   private pending: ChatMessage[] = []
   private queue: Promise<void> = Promise.resolve()
 
@@ -52,6 +60,11 @@ export class ChatService {
     return this.queue
   }
 
+  /** Agrega al historial algo que Dark dijo por su cuenta (por ejemplo, un aviso), para que tenga contexto. */
+  noteAssistant(text: string): void {
+    this.history = [...this.history, { role: 'assistant' as const, content: text }].slice(-MAX_HISTORY)
+  }
+
   async send(text: string): Promise<void> {
     const q = text.trim().slice(0, 4000)
     if (!q || this.busy) return
@@ -62,7 +75,8 @@ export class ChatService {
     const persona: PersonaInput = {
       ...this.deps.getPersona(),
       memories: this.deps.memoryEnabled() ? this.deps.getMemories() : [],
-      now: new Date()
+      now: new Date(),
+      context: this.deps.getContext?.() ?? []
     }
     const messages: ChatMessage[] = [
       { role: 'system', content: buildSystemPrompt(persona) },
@@ -80,9 +94,8 @@ export class ChatService {
         }
         this.deps.ui({ state: 'talking', text: displayText(raw) })
       })
-      const r = extractReminders(raw, Date.now())
-      if (r.reminders.length) this.deps.onReminders(r.reminders)
-      const { text: answer, emotion } = extractEmotion(r.text)
+      const { text: rest, actions } = extractActions(raw, Date.now())
+      const { text: answer, emotion } = extractEmotion(rest)
 
       const turn: ChatMessage[] = [
         { role: 'user', content: q },
@@ -90,7 +103,9 @@ export class ChatService {
       ]
       this.history = [...this.history, ...turn].slice(-MAX_HISTORY)
       this.deps.pet({ type: 'aiDone', emotion })
-      this.deps.ui({ state: 'done', text: answer || '…', emotion })
+      // Las acciones van después de la emoción: si pidió bailar, baila.
+      const notes = actions.length ? this.deps.onActions(actions) : []
+      this.deps.ui({ state: 'done', text: answer || '…', emotion, notes })
 
       if (this.deps.memoryEnabled()) {
         this.pending.push(...turn)
@@ -112,7 +127,6 @@ export class ChatService {
     const convo = this.pending
     this.pending = []
     if (!this.deps.memoryEnabled() || convo.length === 0) return this.idle()
-    // Las extracciones van en cola, una detrás de otra.
     this.queue = this.queue.then(async () => {
       try {
         const raw = await this.deps

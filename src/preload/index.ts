@@ -10,6 +10,7 @@ const SEND = [
   'pet:contextmenu',
   'chat:send',
   'chat:close',
+  'chat:action',
   'chat:resize'
 ] as const
 const ON = ['pet:anim', 'chat:update', 'chat:focus', 'settings:refresh'] as const

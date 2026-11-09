@@ -71,6 +71,7 @@ export interface Pet {
 export type PetEvent =
   | { type: 'work'; on: boolean }
   | { type: 'alert' }
+  | { type: 'sleep' }
   | { type: 'click' }
   | { type: 'dragStart' }
   | { type: 'dragMove'; x: number; y: number }
@@ -291,6 +292,11 @@ export function handle(p: Pet, ev: PetEvent, env: Env): Pet {
       if (AIRBORNE.has(q.state) || q.ai !== 'idle') return q
       return enter(q, 'wave')
     }
+
+    case 'sleep':
+      // Se duerme por orden (bosteza primero).
+      if (AIRBORNE.has(p.state) || p.ai !== 'idle' || p.state === 'sleep') return p
+      return enter({ ...p, working: false }, 'yawn')
 
     case 'work': {
       const q: Pet = { ...p, working: ev.on, idleFor: 0 }

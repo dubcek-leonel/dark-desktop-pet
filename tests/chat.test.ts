@@ -31,7 +31,8 @@ function setup(answers: string[], over: Partial<ChatDeps> = {}) {
     memoryEnabled: () => true,
     addMemories: (m) => (memories = [...memories, ...m]),
     getMemories: () => memories,
-    onReminders: vi.fn(),
+    onActions: vi.fn(() => ['ok']),
+    getContext: () => ['Pomodoro: apagado'],
     ...over
   }
   return { chat: new ChatService(deps), provider, updates, events, deps, mem: () => memories }
@@ -42,14 +43,29 @@ describe('ChatService', () => {
     const s = setup(['Qué flojera. [emo:sad]'])
     await s.chat.send('hola')
     expect(s.events).toEqual(['aiThinking', 'aiTalking', 'aiDone:sad'])
-    expect(s.updates.at(-1)).toEqual({ state: 'done', text: 'Qué flojera.', emotion: 'sad' })
+    expect(s.updates.at(-1)).toEqual({ state: 'done', text: 'Qué flojera.', emotion: 'sad', notes: [] })
   })
 
-  it('crea recordatorios a partir de la etiqueta', async () => {
-    const s = setup(['Te aviso. [recordar:+10m|estirarse] [emo:happy]'])
-    await s.chat.send('recuérdame estirarme en 10 minutos')
-    expect(s.deps.onReminders).toHaveBeenCalledWith([expect.objectContaining({ text: 'estirarse' })])
-    expect(s.updates.at(-1)).toMatchObject({ state: 'done', text: 'Te aviso.' })
+  it('ejecuta las acciones de la respuesta y muestra sus confirmaciones', async () => {
+    const s = setup(['Te aviso. [recordar:+10m|estirarse] [pomodoro:iniciar] [emo:happy]'])
+    await s.chat.send('recuérdame estirarme en 10 minutos y pon un pomodoro')
+    expect(s.deps.onActions).toHaveBeenCalledWith([
+      expect.objectContaining({ type: 'reminder', text: 'estirarse' }),
+      { type: 'pomodoroStart' }
+    ])
+    expect(s.updates.at(-1)).toMatchObject({ state: 'done', text: 'Te aviso.', notes: ['ok'] })
+  })
+
+  it('sin acciones no llama a onActions', async () => {
+    const s = setup(['Hola. [emo:neutral]'])
+    await s.chat.send('hola')
+    expect(s.deps.onActions).not.toHaveBeenCalled()
+  })
+
+  it('el estado de la app va en el prompt de sistema', async () => {
+    const s = setup(['ok [emo:neutral]'])
+    await s.chat.send('hola')
+    expect(s.provider.calls[0][0].content).toContain('Pomodoro: apagado')
   })
 
   it('cada 3 intercambios extrae recuerdos en segundo plano', async () => {

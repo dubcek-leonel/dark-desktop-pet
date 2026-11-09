@@ -1,11 +1,10 @@
+import { ACTION_TAG } from '../actions'
 import type { Emotion } from '../behavior'
-import { REMINDER_TAG } from '../reminders'
 
 const VALID: ReadonlySet<string> = new Set(['happy', 'sad', 'angry', 'surprised', 'neutral'])
 const TAG = /\[emo:\s*([a-z]*)\s*\]/gi
-// Una etiqueta [emo:…] o [recordar:…] que todavía se está escribiendo al final del stream.
-const PARTIAL_AT_END =
-  /\s*\[(?:e(?:m(?:o(?::[^\]]*)?)?)?|r(?:e(?:c(?:o(?:r(?:d(?:a(?:r(?::[^\]]*)?)?)?)?)?)?)?)?)?$/i
+// Una etiqueta que todavía se está escribiendo al final del stream: "[", "[emo:ha", "[recordar:+5m|ag"…
+const PARTIAL_AT_END = /\s*\[[a-zñ_]*(?::[^\]]*)?$/i
 
 /** Separa la etiqueta [emo:x] del texto final. */
 export function extractEmotion(raw: string): { text: string; emotion: Emotion } {
@@ -19,5 +18,10 @@ export function extractEmotion(raw: string): { text: string; emotion: Emotion } 
 
 /** Texto para mostrar mientras llega el stream (sin etiquetas, ni completas ni a medias). */
 export function displayText(partial: string): string {
-  return partial.replace(TAG, '').replace(REMINDER_TAG, '').replace(PARTIAL_AT_END, '').trimEnd()
+  return partial
+    .replace(TAG, '')
+    .replace(ACTION_TAG, '')
+    .replace(PARTIAL_AT_END, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trimEnd()
 }

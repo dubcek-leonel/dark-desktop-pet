@@ -7,7 +7,8 @@ import type { AIProvider } from '../core/ai/types'
 import { normalizeConfig, PROVIDER_PRESETS, type Config, type ProviderId } from '../core/config'
 import { mergeMemories } from '../core/memory'
 import { formatRemaining } from '../core/pomodoro'
-import { formatWhen } from '../core/reminders'
+import { describeRepeat, formatWhen, matches } from '../core/reminders'
+import type { Action } from '../core/actions'
 import { Bubble } from './bubble'
 import { ChatService } from './chat'
 import { PetController } from './petController'
@@ -71,17 +72,112 @@ function makeProvider(provider: ProviderId, baseUrl: string, model: string, apiK
 
 const bubble = new Bubble(loadPage)
 
+const SNOOZE_MIN = 10
+
 const reminders = new ReminderManager((r, late) => {
   const text = late ? `${r.text} (era para ${formatWhen(r.at, Date.now())})` : r.text
   notify(`${config.name} te recuerda`, text)
   controller?.dispatch({ type: 'alert' })
-  bubble.update({ state: 'notice', text: `⏰ Oye… ${text}` })
+  chat.noteAssistant(`(Le avisé al usuario del recordatorio: "${r.text}")`)
+  bubble.update({
+    state: 'notice',
+    text: `⏰ Oye… ${text}`,
+    buttons: [
+      { id: `snooze:${SNOOZE_MIN}:${r.text}`, label: `Posponer ${SNOOZE_MIN} min` },
+      { id: 'dismiss', label: 'Listo' }
+    ]
+  })
   settingsChanged()
 })
+
+/** Lo que la IA sabe del estado de la app en cada mensaje. */
+function appContext(): string[] {
+  const now = Date.now()
+  const list = reminders.all()
+  const lines = [
+    list.length
+      ? `Recordatorios pendientes: ${list
+          .map((r) => `${formatWhen(r.at, now)} "${r.text}"${r.repeat ? ` (${describeRepeat(r.repeat)})` : ''}`)
+          .join('; ')}`
+      : 'No hay recordatorios pendientes.'
+  ]
+  const p = pomodoro.state
+  if (p.phase === 'off') lines.push('Pomodoro: apagado.')
+  else {
+    const c = pomodoro.config()
+    lines.push(
+      `Pomodoro activo (${c.focusMin}/${c.breakMin}), ciclo ${p.cycle}: ${p.phase === 'focus' ? 'foco' : 'descanso'}, faltan ${formatRemaining(pomodoro.remainingMs())}.`
+    )
+  }
+  return lines
+}
+
+/** Ejecuta lo que la IA pidió y devuelve una confirmación visible por cada acción. */
+function runActions(actions: Action[]): string[] {
+  const now = Date.now()
+  const notes: string[] = []
+  for (const a of actions) {
+    switch (a.type) {
+      case 'reminder': {
+        const [r] = reminders.add([{ at: a.at, text: a.text, repeat: a.repeat }])
+        notes.push(`⏰ ${formatWhen(r.at, now)} · ${r.text}${r.repeat ? ` · ${describeRepeat(r.repeat)}` : ''}`)
+        break
+      }
+      case 'cancelReminder': {
+        const gone = reminders.cancel(a.query)
+        notes.push(
+          gone.length
+            ? `🗑 Cancelado: ${gone.map((r) => r.text).join(', ')}`
+            : `⚠ No encontré un recordatorio de "${a.query}"`
+        )
+        break
+      }
+      case 'pomodoroStart': {
+        const override = {
+          ...(a.focusMin ? { focusMin: a.focusMin } : {}),
+          ...(a.breakMin ? { breakMin: a.breakMin } : {})
+        }
+        pomodoro.start(override)
+        const c = pomodoro.config()
+        notes.push(`🍅 Pomodoro ${c.focusMin}/${c.breakMin} iniciado`)
+        break
+      }
+      case 'pomodoroStop':
+        if (pomodoro.isRunning()) {
+          pomodoro.stop()
+          notes.push('🍅 Pomodoro detenido')
+        } else notes.push('🍅 No había un Pomodoro activo')
+        break
+      case 'pet':
+        controller?.dispatch(
+          a.what === 'dance' ? { type: 'dance' } : a.what === 'sleep' ? { type: 'sleep' } : { type: 'alert' }
+        )
+        break
+      case 'remember':
+        memories = mergeMemories(memories, [a.fact])
+        saveMemories(memories)
+        notes.push(`🧠 Anotado: ${a.fact}`)
+        break
+      case 'forget': {
+        const before = memories.length
+        memories = memories.filter((m) => !matches(m, a.query))
+        saveMemories(memories)
+        notes.push(before > memories.length ? `🧠 Olvidado (${before - memories.length})` : `⚠ No recordaba nada de "${a.query}"`)
+        break
+      }
+      case 'invalid':
+        notes.push(`⚠ ${a.reason}`)
+        break
+    }
+  }
+  settingsChanged()
+  return notes
+}
 
 const chat = new ChatService({
   getProvider: () => makeProvider(config.provider, config.baseUrl, config.model, getApiKey(config.provider)),
   getPersona: () => ({ name: config.name, personality: config.personality }),
+  getContext: appContext,
   pet: (ev) => controller?.dispatch(ev),
   ui: (msg) => bubble.update(msg),
   onConfigProblem: () => openSettings(),
@@ -92,30 +188,31 @@ const chat = new ChatService({
     saveMemories(memories)
     settingsChanged()
   },
-  onReminders: (reqs) => {
-    reminders.add(reqs)
-    settingsChanged()
-  }
+  onActions: runActions
 })
 
 const pomodoro = new PomodoroManager(
   () => ({ focusMin: config.pomodoroFocusMin, breakMin: config.pomodoroBreakMin }),
   {
-    onFocusStart: (cycle) => {
+    onFocusStart: (cycle, c) => {
       controller?.dispatch({ type: 'work', on: true })
       const msg =
         cycle === 1
-          ? `Bueno, a trabajar ${config.pomodoroFocusMin} minutos. Yo también… más o menos.`
-          : `Se acabó el descanso. Otros ${config.pomodoroFocusMin} minutos, ánimo.`
-      bubble.update({ state: 'notice', text: msg })
-      notify('Pomodoro', `Foco: ${config.pomodoroFocusMin} min`)
+          ? `Bueno, a trabajar ${c.focusMin} minutos. Yo también… más o menos.`
+          : `Se acabó el descanso. Otros ${c.focusMin} minutos, ánimo.`
+      bubble.update({ state: 'notice', text: `🍅 ${msg}` })
+      notify('Pomodoro', `Foco: ${c.focusMin} min`)
       refreshTray()
     },
-    onBreakStart: () => {
+    onBreakStart: (_cycle, c) => {
       controller?.dispatch({ type: 'work', on: false })
       controller?.dispatch({ type: 'dance' })
-      bubble.update({ state: 'notice', text: `¡Descanso! ${config.pomodoroBreakMin} minutos. Estírate, toma agua.` })
-      notify('Pomodoro', `Descanso: ${config.pomodoroBreakMin} min`)
+      bubble.update({
+        state: 'notice',
+        text: `🍅 ¡Descanso! ${c.breakMin} minutos. Estírate, toma agua.`,
+        buttons: [{ id: 'pomodoro:stop', label: 'Terminar Pomodoro' }]
+      })
+      notify('Pomodoro', `Descanso: ${c.breakMin} min`)
       refreshTray()
     },
     onStop: () => {
@@ -249,6 +346,22 @@ ipcMain.on('chat:close', () => {
   bubble.hide()
   void chat.flushMemory()
 })
+ipcMain.on('chat:action', (_e, id: unknown) => {
+  if (typeof id !== 'string') return
+  if (id.startsWith('snooze:')) {
+    const [, min, ...rest] = id.split(':')
+    const text = rest.join(':')
+    const m = Number(min) || SNOOZE_MIN
+    const [r] = reminders.add([{ at: Date.now() + m * 60_000, text }])
+    bubble.update({ state: 'notice', text: `Ya, te lo repito ${formatWhen(r.at, Date.now())}. 😴` })
+    settingsChanged()
+  } else if (id === 'pomodoro:stop') {
+    pomodoro.stop()
+    bubble.update({ state: 'notice', text: '🍅 Pomodoro terminado. Buen trabajo… supongo.' })
+  } else if (id === 'dismiss') {
+    bubble.hide()
+  }
+})
 ipcMain.on('chat:resize', (_e, h: unknown) => {
   if (typeof h === 'number' && Number.isFinite(h)) bubble.setHeight(h)
 })
@@ -315,7 +428,11 @@ ipcMain.handle('memory:clear', () => {
 })
 
 ipcMain.handle('reminders:list', () =>
-  reminders.all().map((r) => ({ id: r.id, text: r.text, when: formatWhen(r.at, Date.now()) }))
+  reminders.all().map((r) => ({
+    id: r.id,
+    text: r.text,
+    when: `${formatWhen(r.at, Date.now())}${r.repeat ? ` · ${describeRepeat(r.repeat)}` : ''}`
+  }))
 )
 ipcMain.handle('reminders:delete', (_e, id: unknown) => {
   if (typeof id === 'string') reminders.remove(id)
@@ -340,6 +457,7 @@ app.whenReady().then(() => {
   tray = createTray()
   // Un poco después de saludar, para que los recordatorios atrasados se vean.
   setTimeout(() => reminders.start(), 2500)
+
 
   // Primera vez sin API key: Dark lo pide y abre los ajustes.
   if (PROVIDER_PRESETS[config.provider].needsKey && !hasApiKey(config.provider)) {

@@ -71,6 +71,12 @@ describe('Dark trabajando', () => {
     expect(handle(p, { type: 'alert' }, env).state).toBe('wake_up')
   })
 
+  it('se duerme por orden', () => {
+    const p = run(createPet(env, 500), 700)
+    expect(handle(p, { type: 'sleep' }, env).state).toBe('yawn')
+    expect(run(handle(p, { type: 'sleep' }, env), 100).state).toBe('sleep')
+  })
+
   it('la IA tiene prioridad: piensa y luego vuelve a trabajar', () => {
     let p = handle(run(createPet(env, 500), 700), { type: 'work', on: true }, env)
     p = handle(p, { type: 'aiThinking' }, env)
