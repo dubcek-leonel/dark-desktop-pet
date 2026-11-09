@@ -145,7 +145,7 @@ tests/         Vitest
 ### Task 12: Instalador
 - `electron-builder` → `.exe` (NSIS) con `icon-512.png` convertido a `.ico`.
 
-## Fase 3 — Voz (Tareas 13–15)
+## Fase 3 — Voz (Tareas 13–15) ✅ hecha 2026-11-08
 
 ### Task 13: Texto a voz (Piper, local)
 - Se descargan el binario y una voz en español al activar la voz. Dark usa `talk` mientras suena el audio.
