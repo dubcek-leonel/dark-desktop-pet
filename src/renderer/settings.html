@@ -73,6 +73,21 @@
       .range { display: flex; gap: 10px; align-items: center; }
       .range input { flex: 1; }
       .range output { width: 44px; text-align: right; color: var(--muted); }
+      .list { list-style: none; margin: 10px 0; padding: 0; max-height: 220px; overflow-y: auto; }
+      .list li {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 7px 8px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+      }
+      .list li:last-child { border-bottom: 0; }
+      .list li span { flex: 1; }
+      .list li small { color: var(--muted); white-space: nowrap; }
+      .list li button { padding: 0 7px; font-size: 12px; line-height: 20px; }
+      .list .empty { color: var(--muted); border: 0; }
+      button.danger { color: var(--err); }
     </style>
   </head>
   <body>
@@ -134,6 +149,37 @@
           <input type="checkbox" id="startup" />
           <label for="startup">Iniciar con Windows (en la versión instalada)</label>
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Pomodoro</legend>
+        <div class="row">
+          <div style="flex: 1">
+            <label for="focusMin">Foco (minutos)</label>
+            <input type="number" id="focusMin" min="5" max="90" />
+          </div>
+          <div style="flex: 1">
+            <label for="breakMin">Descanso (minutos)</label>
+            <input type="number" id="breakMin" min="1" max="30" />
+          </div>
+        </div>
+        <div class="hint">Se inicia desde el menú de Dark (clic derecho) o el ícono de la bandeja.</div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Memoria</legend>
+        <div class="check" style="margin-top: 0">
+          <input type="checkbox" id="memoryEnabled" />
+          <label for="memoryEnabled">Recordar cosas sobre mí entre conversaciones</label>
+        </div>
+        <ul class="list" id="memList"></ul>
+        <button type="button" id="memClear" class="danger">Borrar todos los recuerdos</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Recordatorios pendientes</legend>
+        <ul class="list" id="remList"></ul>
+        <div class="hint">Pídeselos por chat: "recuérdame tomar agua en 20 minutos".</div>
       </fieldset>
 
       <button type="submit" class="primary">Guardar</button>

@@ -10,6 +10,9 @@ export interface Config {
   scale: number
   sleepAfterMinutes: number
   startWithWindows: boolean
+  memoryEnabled: boolean
+  pomodoroFocusMin: number
+  pomodoroBreakMin: number
 }
 
 export const PROVIDER_PRESETS: Record<ProviderId, { label: string; baseUrl: string; model: string; needsKey: boolean }> = {
@@ -41,7 +44,10 @@ export const DEFAULT_CONFIG: Config = {
   personality: 'sarcástico y algo flojo',
   scale: 1,
   sleepAfterMinutes: 5,
-  startWithWindows: false
+  startWithWindows: false,
+  memoryEnabled: true,
+  pomodoroFocusMin: 25,
+  pomodoroBreakMin: 5
 }
 
 function str(v: unknown, fallback: string, max = 2000): string {
@@ -69,6 +75,9 @@ export function normalizeConfig(raw: unknown): Config {
     personality: str(r.personality, DEFAULT_CONFIG.personality, 1000),
     scale: num(r.scale, DEFAULT_CONFIG.scale, 0.5, 2),
     sleepAfterMinutes: num(r.sleepAfterMinutes, DEFAULT_CONFIG.sleepAfterMinutes, 1, 120),
-    startWithWindows: r.startWithWindows === true
+    startWithWindows: r.startWithWindows === true,
+    memoryEnabled: r.memoryEnabled !== false,
+    pomodoroFocusMin: Math.round(num(r.pomodoroFocusMin, DEFAULT_CONFIG.pomodoroFocusMin, 5, 90)),
+    pomodoroBreakMin: Math.round(num(r.pomodoroBreakMin, DEFAULT_CONFIG.pomodoroBreakMin, 1, 30))
   }
 }

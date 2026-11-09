@@ -12,8 +12,18 @@ const SEND = [
   'chat:close',
   'chat:resize'
 ] as const
-const ON = ['pet:anim', 'chat:update', 'chat:focus'] as const
-const INVOKE = ['config:get', 'config:save', 'ai:listModels', 'ai:test'] as const
+const ON = ['pet:anim', 'chat:update', 'chat:focus', 'settings:refresh'] as const
+const INVOKE = [
+  'config:get',
+  'config:save',
+  'ai:listModels',
+  'ai:test',
+  'memory:list',
+  'memory:delete',
+  'memory:clear',
+  'reminders:list',
+  'reminders:delete'
+] as const
 
 type SendCh = (typeof SEND)[number]
 type OnCh = (typeof ON)[number]

@@ -32,6 +32,15 @@ describe('config', () => {
     expect(c).not.toHaveProperty('basura')
   })
 
+  it('memoria activada y Pomodoro 25/5 por defecto, con límites', () => {
+    expect(normalizeConfig({})).toMatchObject({ memoryEnabled: true, pomodoroFocusMin: 25, pomodoroBreakMin: 5 })
+    expect(normalizeConfig({ memoryEnabled: false, pomodoroFocusMin: 500, pomodoroBreakMin: 0 })).toMatchObject({
+      memoryEnabled: false,
+      pomodoroFocusMin: 90,
+      pomodoroBreakMin: 1
+    })
+  })
+
   it('un proveedor desconocido vuelve al de por defecto', () => {
     expect(normalizeConfig({ provider: 'skynet' }).provider).toBe('gemini')
   })

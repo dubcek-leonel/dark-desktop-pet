@@ -3,6 +3,7 @@ type ChatUpdate =
   | { state: 'talking'; text: string }
   | { state: 'done'; text: string }
   | { state: 'error'; text: string }
+  | { state: 'notice'; text: string }
 
 const wrap = document.getElementById('wrap')!
 const question = document.getElementById('question')!
@@ -54,6 +55,14 @@ window.api.on('chat:update', (msg: ChatUpdate) => {
       break
     case 'done':
       setBusy(false)
+      answer.classList.remove('error')
+      answer.textContent = msg.text
+      scheduleAutoClose()
+      break
+    case 'notice':
+      // Aviso de Dark (recordatorio, Pomodoro…): no es respuesta a una pregunta.
+      if (busy) break
+      question.textContent = ''
       answer.classList.remove('error')
       answer.textContent = msg.text
       scheduleAutoClose()

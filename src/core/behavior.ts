@@ -64,9 +64,13 @@ export interface Pet {
   clicks: number[]
   clock: number
   ai: 'idle' | 'thinking' | 'talking'
+  /** Pomodoro en foco: Dark trabaja en vez de pasear o dormir. */
+  working: boolean
 }
 
 export type PetEvent =
+  | { type: 'work'; on: boolean }
+  | { type: 'alert' }
   | { type: 'click' }
   | { type: 'dragStart' }
   | { type: 'dragMove'; x: number; y: number }
@@ -126,6 +130,7 @@ function randomBetween(env: Env, a: number, b: number): number {
 function toIdle(p: Pet, env: Env): Pet {
   if (p.ai === 'thinking') return enter(p, 'think')
   if (p.ai === 'talking') return enter(p, 'talk')
+  if (p.working) return enter(p, 'work')
   return enter(p, 'idle', { wait: randomBetween(env, 3000, 8000) })
 }
 
@@ -143,7 +148,8 @@ export function createPet(env: Env, x: number): Pet {
     idleFor: 0,
     clicks: [],
     clock: 0,
-    ai: 'idle'
+    ai: 'idle',
+    working: false
   }
 }
 
@@ -277,5 +283,22 @@ export function handle(p: Pet, ev: PetEvent, env: Env): Pet {
     case 'dance':
       if (AIRBORNE.has(p.state)) return p
       return enter(p, 'dance', { wait: randomBetween(env, 4000, 8000) })
+
+    case 'alert': {
+      // Llama la atención (recordatorio): saluda; si dormía, se despierta primero.
+      const q: Pet = { ...p, idleFor: 0 }
+      if (q.state === 'sleep' || q.state === 'yawn') return enter(q, 'wake_up')
+      if (AIRBORNE.has(q.state) || q.ai !== 'idle') return q
+      return enter(q, 'wave')
+    }
+
+    case 'work': {
+      const q: Pet = { ...p, working: ev.on, idleFor: 0 }
+      if (ev.on) {
+        if (AIRBORNE.has(q.state) || q.ai !== 'idle') return q
+        return enter(q, 'work')
+      }
+      return q.state === 'work' ? toIdle(q, env) : q
+    }
   }
 }

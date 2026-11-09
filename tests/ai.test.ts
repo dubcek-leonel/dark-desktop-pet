@@ -50,6 +50,11 @@ describe('persona', () => {
     expect(p).toContain('Se llama Leo')
     expect(p).toContain('[emo:')
   })
+  it('explica los recordatorios e incluye la fecha y hora si se le pasa', () => {
+    const p = buildSystemPrompt({ name: 'Dark', personality: 'x', now: new Date(2026, 10, 8, 21, 5) })
+    expect(p).toContain('[recordar:')
+    expect(p).toContain('2026-11-08 21:05')
+  })
 })
 
 describe('cliente compatible con OpenAI (Gemini)', () => {

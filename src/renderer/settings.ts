@@ -30,8 +30,83 @@ const sleep = $<HTMLInputElement>('sleep')
 const startup = $<HTMLInputElement>('startup')
 const status = $<HTMLDivElement>('status')
 const probe = $<HTMLDivElement>('probe')
+const focusMin = $<HTMLInputElement>('focusMin')
+const breakMin = $<HTMLInputElement>('breakMin')
+const memoryEnabled = $<HTMLInputElement>('memoryEnabled')
+const memList = $<HTMLUListElement>('memList')
+const remList = $<HTMLUListElement>('remList')
 
 $<HTMLImageElement>('avatar').src = iconUrl
+
+function li(text: string, onDelete: () => void, extra?: string): HTMLLIElement {
+  const el = document.createElement('li')
+  const span = document.createElement('span')
+  span.textContent = text
+  el.appendChild(span)
+  if (extra) {
+    const small = document.createElement('small')
+    small.textContent = extra
+    el.appendChild(small)
+  }
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.textContent = '✕'
+  btn.title = 'Borrar'
+  btn.addEventListener('click', onDelete)
+  el.appendChild(btn)
+  return el
+}
+
+function empty(text: string): HTMLLIElement {
+  const el = document.createElement('li')
+  el.className = 'empty'
+  el.textContent = text
+  return el
+}
+
+function renderMemories(list: string[]): void {
+  memList.replaceChildren(
+    ...(list.length
+      ? list.map((m, i) =>
+          li(m, async () => renderMemories(await window.api.invoke<string[]>('memory:delete', i)))
+        )
+      : [empty('Todavía no recuerda nada de ti.')])
+  )
+}
+
+interface ReminderRow {
+  id: string
+  text: string
+  when: string
+}
+function renderReminders(list: ReminderRow[]): void {
+  remList.replaceChildren(
+    ...(list.length
+      ? list.map((r) =>
+          li(
+            r.text,
+            async () => {
+              await window.api.invoke('reminders:delete', r.id)
+              void loadLists()
+            },
+            r.when
+          )
+        )
+      : [empty('No hay recordatorios pendientes.')])
+  )
+}
+
+async function loadLists(): Promise<void> {
+  renderMemories(await window.api.invoke<string[]>('memory:list'))
+  renderReminders(await window.api.invoke<ReminderRow[]>('reminders:list'))
+}
+
+$<HTMLButtonElement>('memClear').addEventListener('click', async () => {
+  if (!confirm('¿Borrar todo lo que Dark recuerda de ti? No se puede deshacer.')) return
+  renderMemories(await window.api.invoke<string[]>('memory:clear'))
+})
+
+window.api.on('settings:refresh', () => void loadLists())
 
 let state: GetResult
 
@@ -84,6 +159,10 @@ async function init(): Promise<void> {
   scaleOut.value = `${Math.round(c.scale * 100)}%`
   sleep.value = String(c.sleepAfterMinutes)
   startup.checked = c.startWithWindows
+  focusMin.value = String(c.pomodoroFocusMin)
+  breakMin.value = String(c.pomodoroBreakMin)
+  memoryEnabled.checked = c.memoryEnabled
+  void loadLists()
   document.title = `Ajustes de ${c.name}`
   $<HTMLHeadingElement>('title').textContent = `Ajustes de ${c.name}`
   refreshKeyUi()
@@ -123,7 +202,10 @@ form.addEventListener('submit', async (e) => {
     personality: personality.value,
     scale: Number(scale.value),
     sleepAfterMinutes: Number(sleep.value),
-    startWithWindows: startup.checked
+    startWithWindows: startup.checked,
+    memoryEnabled: memoryEnabled.checked,
+    pomodoroFocusMin: Number(focusMin.value),
+    pomodoroBreakMin: Number(breakMin.value)
   }
   const r = await window.api.invoke<{ ok: boolean; hasKey?: Record<ProviderId, boolean>; error?: string }>(
     'config:save',
