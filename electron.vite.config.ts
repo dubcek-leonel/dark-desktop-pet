@@ -12,7 +12,9 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/renderer/index.html')
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          bubble: resolve(__dirname, 'src/renderer/bubble.html'),
+          settings: resolve(__dirname, 'src/renderer/settings.html')
         }
       }
     }

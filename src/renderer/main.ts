@@ -9,7 +9,7 @@ const ctx = canvas.getContext('2d', { willReadFrequently: true })!
 const atlas = new Image()
 atlas.src = atlasUrl
 
-let anim = 'idle'
+let anim = 'wave'
 let facing: 1 | -1 = 1
 let startedAt = performance.now()
 
