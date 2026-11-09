@@ -56,6 +56,30 @@ describe('ChatService', () => {
     expect(s.updates.at(-1)).toMatchObject({ state: 'done', text: 'Te aviso.', notes: ['ok'] })
   })
 
+  it('con voz: sigue hablando hasta terminar la frase y después muestra la emoción', async () => {
+    const order: string[] = []
+    const s = setup(['Hola. [emo:happy]'], {
+      speak: async (t) => {
+        order.push(`speak:${t}`)
+      },
+      pet: (ev) => order.push(ev.type)
+    })
+    await s.chat.send('hola')
+    expect(order).toEqual(['aiThinking', 'aiTalking', 'speak:Hola.', 'aiDone'])
+  })
+
+  it('las animaciones pedidas se hacen al final', async () => {
+    const calls: string[][] = []
+    const s = setup(['Ok. [accion:bailar] [recordar:+5m|agua] [emo:happy]'], {
+      onActions: (a) => {
+        calls.push(a.map((x) => x.type))
+        return []
+      }
+    })
+    await s.chat.send('baila y recuérdame el agua')
+    expect(calls).toEqual([['reminder'], ['pet']])
+  })
+
   it('sin acciones no llama a onActions', async () => {
     const s = setup(['Hola. [emo:neutral]'])
     await s.chat.send('hola')

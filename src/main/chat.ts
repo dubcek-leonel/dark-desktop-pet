@@ -17,6 +17,7 @@ export type ChatUpdate =
   | { state: 'done'; text: string; emotion: Emotion; notes?: string[] }
   | { state: 'error'; text: string }
   | { state: 'notice'; text: string; buttons?: BubbleButton[] }
+  | { state: 'listening' }
 
 export interface ChatDeps {
   getProvider: () => AIProvider
@@ -31,6 +32,8 @@ export interface ChatDeps {
   addMemories: (facts: string[]) => void
   /** Ejecuta las acciones pedidas; devuelve una confirmación por cada una. */
   onActions: (actions: Action[]) => string[]
+  /** Si está, Dark dice la respuesta en voz alta (y sigue en "hablando" hasta terminar). */
+  speak?: (text: string) => Promise<void>
 }
 
 const MAX_HISTORY = 20
@@ -102,10 +105,17 @@ export class ChatService {
         { role: 'assistant', content: answer }
       ]
       this.history = [...this.history, ...turn].slice(-MAX_HISTORY)
-      this.deps.pet({ type: 'aiDone', emotion })
-      // Las acciones van después de la emoción: si pidió bailar, baila.
-      const notes = actions.length ? this.deps.onActions(actions) : []
+      // Las animaciones pedidas (bailar, dormir…) van al final, después de hablar y de la emoción.
+      const petActions = actions.filter((a) => a.type === 'pet')
+      const other = actions.filter((a) => a.type !== 'pet')
+      const notes = other.length ? this.deps.onActions(other) : []
       this.deps.ui({ state: 'done', text: answer || '…', emotion, notes })
+      if (this.deps.speak && answer) {
+        if (!talking) this.deps.pet({ type: 'aiTalking' })
+        await this.deps.speak(answer).catch(() => {})
+      }
+      this.deps.pet({ type: 'aiDone', emotion })
+      if (petActions.length) this.deps.onActions(petActions)
 
       if (this.deps.memoryEnabled()) {
         this.pending.push(...turn)

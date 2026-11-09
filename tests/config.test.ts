@@ -41,6 +41,18 @@ describe('config', () => {
     })
   })
 
+  it('voz apagada por defecto, con voz Ald y límites de velocidad y tono', () => {
+    expect(normalizeConfig({})).toMatchObject({
+      voiceEnabled: false,
+      voiceId: 'es_MX-ald-medium',
+      listenEnabled: false,
+      wakeWordEnabled: false,
+      whisperModel: 'base'
+    })
+    const c = normalizeConfig({ voiceSpeed: 9, voicePitch: 0.1, voiceId: '../../malo', whisperModel: 'huge' })
+    expect(c).toMatchObject({ voiceSpeed: 1.6, voicePitch: 0.75, voiceId: 'es_MX-ald-medium', whisperModel: 'base' })
+  })
+
   it('un proveedor desconocido vuelve al de por defecto', () => {
     expect(normalizeConfig({ provider: 'skynet' }).provider).toBe('gemini')
   })

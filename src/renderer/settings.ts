@@ -162,6 +162,15 @@ async function init(): Promise<void> {
   focusMin.value = String(c.pomodoroFocusMin)
   breakMin.value = String(c.pomodoroBreakMin)
   memoryEnabled.checked = c.memoryEnabled
+  voiceEnabled.checked = c.voiceEnabled
+  voiceSpeed.value = String(c.voiceSpeed)
+  voicePitch.value = String(c.voicePitch)
+  listenEnabled.checked = c.listenEnabled
+  wakeWordEnabled.checked = c.wakeWordEnabled
+  pushToTalkKey.value = c.pushToTalkKey
+  $<HTMLLabelElement>('wakeLabel').textContent = `Escuchar siempre y activarse al decir "${c.name}"`
+  showSliders()
+  await loadVoice(c.voiceId, c.whisperModel)
   void loadLists()
   document.title = `Ajustes de ${c.name}`
   $<HTMLHeadingElement>('title').textContent = `Ajustes de ${c.name}`
@@ -205,7 +214,15 @@ form.addEventListener('submit', async (e) => {
     startWithWindows: startup.checked,
     memoryEnabled: memoryEnabled.checked,
     pomodoroFocusMin: Number(focusMin.value),
-    pomodoroBreakMin: Number(breakMin.value)
+    pomodoroBreakMin: Number(breakMin.value),
+    voiceEnabled: voiceEnabled.checked,
+    voiceId: voiceId.value,
+    voiceSpeed: Number(voiceSpeed.value),
+    voicePitch: Number(voicePitch.value),
+    listenEnabled: listenEnabled.checked,
+    wakeWordEnabled: wakeWordEnabled.checked,
+    whisperModel: whisperModel.value as Config['whisperModel'],
+    pushToTalkKey: pushToTalkKey.value
   }
   const r = await window.api.invoke<{ ok: boolean; hasKey?: Record<ProviderId, boolean>; error?: string }>(
     'config:save',
@@ -215,6 +232,121 @@ form.addEventListener('submit', async (e) => {
   if (r.hasKey) state.hasKey = r.hasKey
   refreshKeyUi()
   say(status, '✓ Guardado', 'ok')
+})
+
+// ---------- Voz ----------
+
+interface VoiceStatus {
+  piper: boolean
+  whisper: boolean
+  voices: Record<string, boolean>
+  models: Record<string, boolean>
+  catalog: Array<{ id: string; label: string; sizeMB: number }>
+  whisperModels: Array<{ id: string; label: string; sizeMB: number }>
+}
+
+const voiceEnabled = $<HTMLInputElement>('voiceEnabled')
+const voiceId = $<HTMLSelectElement>('voiceId')
+const voiceSpeed = $<HTMLInputElement>('voiceSpeed')
+const voicePitch = $<HTMLInputElement>('voicePitch')
+const voiceMsg = $<HTMLDivElement>('voiceMsg')
+const voiceDownload = $<HTMLButtonElement>('voiceDownload')
+const listenEnabled = $<HTMLInputElement>('listenEnabled')
+const wakeWordEnabled = $<HTMLInputElement>('wakeWordEnabled')
+const pushToTalkKey = $<HTMLInputElement>('pushToTalkKey')
+const whisperModel = $<HTMLSelectElement>('whisperModel')
+const sttDownload = $<HTMLButtonElement>('sttDownload')
+const sttMsg = $<HTMLDivElement>('sttMsg')
+let vs: VoiceStatus
+
+function showSliders(): void {
+  $<HTMLOutputElement>('voiceSpeedOut').value = `${Number(voiceSpeed.value).toFixed(2)}×`
+  $<HTMLOutputElement>('voicePitchOut').value = `${Number(voicePitch.value).toFixed(2)}×`
+}
+voiceSpeed.addEventListener('input', showSliders)
+voicePitch.addEventListener('input', showSliders)
+
+function refreshVoiceUi(): void {
+  const voiceReady = vs.piper && vs.voices[voiceId.value]
+  voiceDownload.style.display = voiceReady ? 'none' : ''
+  const v = vs.catalog.find((x) => x.id === voiceId.value)
+  if (!voiceReady) say(voiceMsg, `Hay que descargar esta voz (~${(v?.sizeMB ?? 0) + (vs.piper ? 0 : 21)} MB, una sola vez).`)
+  else say(voiceMsg, '✓ Voz instalada.', 'ok')
+  const sttReady = vs.whisper && vs.models[whisperModel.value]
+  sttDownload.style.display = sttReady ? 'none' : ''
+  const m = vs.whisperModels.find((x) => x.id === whisperModel.value)
+  if (!sttReady)
+    say(sttMsg, `Hay que descargar el reconocimiento de voz (~${(m?.sizeMB ?? 0) + (vs.whisper ? 0 : 9)} MB, una sola vez).`)
+  else say(sttMsg, '✓ Reconocimiento de voz instalado.', 'ok')
+}
+
+async function loadVoice(selectedVoice?: string, selectedModel?: string): Promise<void> {
+  vs = await window.api.invoke<VoiceStatus>('voice:status')
+  const keepV = selectedVoice ?? voiceId.value
+  const keepM = selectedModel ?? whisperModel.value
+  voiceId.replaceChildren(
+    ...vs.catalog.map((v) => {
+      const o = document.createElement('option')
+      o.value = v.id
+      o.textContent = `${vs.voices[v.id] ? '✓ ' : ''}${v.label}`
+      return o
+    })
+  )
+  whisperModel.replaceChildren(
+    ...vs.whisperModels.map((m) => {
+      const o = document.createElement('option')
+      o.value = m.id
+      o.textContent = `${vs.models[m.id] ? '✓ ' : ''}${m.label}`
+      return o
+    })
+  )
+  voiceId.value = keepV
+  whisperModel.value = keepM
+  refreshVoiceUi()
+}
+
+voiceId.addEventListener('change', refreshVoiceUi)
+whisperModel.addEventListener('change', refreshVoiceUi)
+
+window.api.on('voice:progress', (p: { kind: string; label: string; pct: number }) => {
+  say(p.kind === 'tts' ? voiceMsg : sttMsg, `${p.label}… ${p.pct}%`)
+})
+
+async function install(kind: 'tts' | 'stt', id: string, btn: HTMLButtonElement, msg: HTMLDivElement): Promise<boolean> {
+  btn.disabled = true
+  say(msg, 'Descargando…')
+  const r = await window.api.invoke<{ ok: boolean; error?: string }>('voice:install', { kind, id })
+  btn.disabled = false
+  if (!r.ok) {
+    say(msg, r.error ?? 'Error', 'err')
+    return false
+  }
+  await loadVoice()
+  return true
+}
+
+voiceDownload.addEventListener('click', async () => {
+  if (await install('tts', voiceId.value, voiceDownload, voiceMsg)) {
+    voiceEnabled.checked = true
+    say(voiceMsg, '✓ Voz instalada. Pulsa Guardar para activarla.', 'ok')
+  }
+})
+sttDownload.addEventListener('click', async () => {
+  if (await install('stt', whisperModel.value, sttDownload, sttMsg)) {
+    listenEnabled.checked = true
+    say(sttMsg, '✓ Instalado. Pulsa Guardar para activarlo.', 'ok')
+  }
+})
+
+$<HTMLButtonElement>('voiceTest').addEventListener('click', async () => {
+  if (!(vs.piper && vs.voices[voiceId.value])) return say(voiceMsg, 'Primero descarga esta voz.', 'err')
+  say(voiceMsg, 'Hablando…')
+  await window.api.invoke('voice:test', {
+    voiceId: voiceId.value,
+    speed: Number(voiceSpeed.value),
+    pitch: Number(voicePitch.value)
+  })
+  refreshVoiceUi()
 })
 
 void init()

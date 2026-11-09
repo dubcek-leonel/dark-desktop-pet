@@ -11,9 +11,23 @@ const SEND = [
   'chat:send',
   'chat:close',
   'chat:action',
+  'chat:mic',
+  'voice:utterance',
+  'voice:timeout',
+  'voice:played',
+  'voice:error',
   'chat:resize'
 ] as const
-const ON = ['pet:anim', 'chat:update', 'chat:focus', 'settings:refresh'] as const
+const ON = [
+  'pet:anim',
+  'chat:update',
+  'chat:focus',
+  'settings:refresh',
+  'voice:mode',
+  'voice:play',
+  'voice:stopPlayback',
+  'voice:progress'
+] as const
 const INVOKE = [
   'config:get',
   'config:save',
@@ -23,7 +37,10 @@ const INVOKE = [
   'memory:delete',
   'memory:clear',
   'reminders:list',
-  'reminders:delete'
+  'reminders:delete',
+  'voice:status',
+  'voice:install',
+  'voice:test'
 ] as const
 
 type SendCh = (typeof SEND)[number]

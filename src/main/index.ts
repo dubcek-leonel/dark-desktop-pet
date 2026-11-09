@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, Notification, Tray } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, Notification, session, Tray } from 'electron'
 import { createOllama } from '../core/ai/ollama'
 import { createOpenAICompat } from '../core/ai/openaiCompat'
 import { friendlyError } from '../core/ai/errors'
@@ -9,7 +9,10 @@ import { mergeMemories } from '../core/memory'
 import { formatRemaining } from '../core/pomodoro'
 import { describeRepeat, formatWhen, matches } from '../core/reminders'
 import type { Action } from '../core/actions'
+import { VOICES, WHISPER_MODELS } from '../core/voice/catalog'
 import { Bubble } from './bubble'
+import { installVoice, installWhisper, status as voiceStatus } from './voice/assets'
+import { VoiceService } from './voice/service'
 import { ChatService } from './chat'
 import { PetController } from './petController'
 import { PomodoroManager } from './pomodoroManager'
@@ -25,6 +28,8 @@ import {
 } from './store'
 
 app.setName('Dark')
+// Solo para desarrollo y pruebas: usar otra carpeta de datos.
+if (process.env['DARK_USER_DATA']) app.setPath('userData', process.env['DARK_USER_DATA'])
 app.setAppUserModelId('com.dubcek.dark')
 if (!app.requestSingleInstanceLock()) app.quit()
 
@@ -72,6 +77,21 @@ function makeProvider(provider: ProviderId, baseUrl: string, model: string, apiK
 
 const bubble = new Bubble(loadPage)
 
+const voice = new VoiceService({
+  getConfig: () => config,
+  pet: (ev) => controller?.dispatch(ev),
+  ui: (msg) => bubble.update(msg),
+  onCommand: (text) => void chat.send(text),
+  load: loadPage,
+  log: (m) => console.log(`[voz] ${m}`)
+})
+
+/** Muestra un aviso en la burbuja y, si la voz está activa, lo dice. */
+function announce(msg: { text: string; buttons?: { id: string; label: string }[] }, spoken?: string): void {
+  bubble.update({ state: 'notice', ...msg })
+  void voice.speak(spoken ?? msg.text)
+}
+
 const SNOOZE_MIN = 10
 
 const reminders = new ReminderManager((r, late) => {
@@ -79,14 +99,16 @@ const reminders = new ReminderManager((r, late) => {
   notify(`${config.name} te recuerda`, text)
   controller?.dispatch({ type: 'alert' })
   chat.noteAssistant(`(Le avisé al usuario del recordatorio: "${r.text}")`)
-  bubble.update({
-    state: 'notice',
-    text: `⏰ Oye… ${text}`,
-    buttons: [
-      { id: `snooze:${SNOOZE_MIN}:${r.text}`, label: `Posponer ${SNOOZE_MIN} min` },
-      { id: 'dismiss', label: 'Listo' }
-    ]
-  })
+  announce(
+    {
+      text: `⏰ Oye… ${text}`,
+      buttons: [
+        { id: `snooze:${SNOOZE_MIN}:${r.text}`, label: `Posponer ${SNOOZE_MIN} min` },
+        { id: 'dismiss', label: 'Listo' }
+      ]
+    },
+    `Oye, te recuerdo: ${r.text}`
+  )
   settingsChanged()
 })
 
@@ -188,7 +210,8 @@ const chat = new ChatService({
     saveMemories(memories)
     settingsChanged()
   },
-  onActions: runActions
+  onActions: runActions,
+  speak: (t) => voice.speak(t)
 })
 
 const pomodoro = new PomodoroManager(
@@ -200,15 +223,14 @@ const pomodoro = new PomodoroManager(
         cycle === 1
           ? `Bueno, a trabajar ${c.focusMin} minutos. Yo también… más o menos.`
           : `Se acabó el descanso. Otros ${c.focusMin} minutos, ánimo.`
-      bubble.update({ state: 'notice', text: `🍅 ${msg}` })
+      announce({ text: `🍅 ${msg}` }, msg)
       notify('Pomodoro', `Foco: ${c.focusMin} min`)
       refreshTray()
     },
     onBreakStart: (_cycle, c) => {
       controller?.dispatch({ type: 'work', on: false })
       controller?.dispatch({ type: 'dance' })
-      bubble.update({
-        state: 'notice',
+      announce({
         text: `🍅 ¡Descanso! ${c.breakMin} minutos. Estírate, toma agua.`,
         buttons: [{ id: 'pomodoro:stop', label: 'Terminar Pomodoro' }]
       })
@@ -322,6 +344,21 @@ function applyConfig(): void {
   if (!pomodoro.isRunning()) tray?.setToolTip(config.name)
   refreshTray()
   if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: config.startWithWindows })
+  registerShortcuts()
+  void voice.apply()
+}
+
+function registerShortcuts(): void {
+  globalShortcut.unregisterAll()
+  if (!config.listenEnabled) return
+  try {
+    globalShortcut.register(config.pushToTalkKey, () => {
+      pet?.showInactive()
+      void voice.listenOnce()
+    })
+  } catch (e) {
+    console.warn('No se pudo registrar el atajo', config.pushToTalkKey, e)
+  }
 }
 
 // ---------- IPC ----------
@@ -362,6 +399,34 @@ ipcMain.on('chat:action', (_e, id: unknown) => {
     bubble.hide()
   }
 })
+ipcMain.on('chat:mic', () => void voice.listenOnce())
+
+ipcMain.handle('voice:status', () => ({ ...voiceStatus(), catalog: VOICES, whisperModels: WHISPER_MODELS }))
+
+ipcMain.handle('voice:install', async (_e, a: { kind?: unknown; id?: unknown }) => {
+  const progress = (label: string, pct: number): void =>
+    settingsWin?.webContents.send('voice:progress', { kind: a?.kind, label, pct })
+  try {
+    if (a?.kind === 'tts' && typeof a.id === 'string') await installVoice(a.id, progress)
+    else if (a?.kind === 'stt' && (a.id === 'tiny' || a.id === 'base' || a.id === 'small')) await installWhisper(a.id, progress)
+    else throw new Error('Pedido inválido')
+    await voice.apply()
+    return { ok: true, status: voiceStatus() }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
+})
+
+ipcMain.handle('voice:test', async (_e, a: { voiceId?: unknown; speed?: unknown; pitch?: unknown }) => {
+  const c = normalizeConfig({ ...config, voiceId: a?.voiceId, voiceSpeed: a?.speed, voicePitch: a?.pitch })
+  await voice.speak(`Hola, soy ${config.name}. Qué flojera hablar, pero bueno, así sueno.`, {
+    voiceId: c.voiceId,
+    speed: c.voiceSpeed,
+    pitch: c.voicePitch
+  })
+  return true
+})
+
 ipcMain.on('chat:resize', (_e, h: unknown) => {
   if (typeof h === 'number' && Number.isFinite(h)) bubble.setHeight(h)
 })
@@ -447,6 +512,9 @@ app.on('second-instance', () => {
 })
 
 app.whenReady().then(() => {
+  // Solo se permite el micrófono (para escucharte); nada más.
+  session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(perm === 'media'))
+  session.defaultSession.setPermissionCheckHandler((_wc, perm) => perm === 'media')
   config = loadConfig()
   memories = loadMemories()
   pet = createPetWindow(Math.round(256 * config.scale))
@@ -457,6 +525,9 @@ app.whenReady().then(() => {
   tray = createTray()
   // Un poco después de saludar, para que los recordatorios atrasados se vean.
   setTimeout(() => reminders.start(), 2500)
+  registerShortcuts()
+  void voice.apply()
+  if (process.env['DARK_SELFTEST']) setTimeout(() => void voice.selfTest().finally(() => app.quit()), 3000)
 
 
   // Primera vez sin API key: Dark lo pide y abre los ajustes.
@@ -474,6 +545,8 @@ app.whenReady().then(() => {
 let quitting = false
 app.on('before-quit', (e) => {
   // Antes de salir, guarda los recuerdos de la última conversación (máx. 4 s).
+  globalShortcut.unregisterAll()
+  void voice.shutdown()
   if (quitting || !config?.memoryEnabled) return
   e.preventDefault()
   quitting = true

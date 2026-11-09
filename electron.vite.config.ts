@@ -14,7 +14,8 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
           bubble: resolve(__dirname, 'src/renderer/bubble.html'),
-          settings: resolve(__dirname, 'src/renderer/settings.html')
+          settings: resolve(__dirname, 'src/renderer/settings.html'),
+          voice: resolve(__dirname, 'src/renderer/voice.html')
         }
       }
     }

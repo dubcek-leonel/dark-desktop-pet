@@ -13,6 +13,17 @@ export interface Config {
   memoryEnabled: boolean
   pomodoroFocusMin: number
   pomodoroBreakMin: number
+  /** Dark responde en voz alta (Piper). */
+  voiceEnabled: boolean
+  voiceId: string
+  voiceSpeed: number
+  voicePitch: number
+  /** Botón de micrófono y atajo de teclado para hablarle (whisper.cpp). */
+  listenEnabled: boolean
+  /** Escucha siempre y se activa al oír su nombre. */
+  wakeWordEnabled: boolean
+  whisperModel: 'tiny' | 'base' | 'small'
+  pushToTalkKey: string
 }
 
 export const PROVIDER_PRESETS: Record<ProviderId, { label: string; baseUrl: string; model: string; needsKey: boolean }> = {
@@ -47,7 +58,15 @@ export const DEFAULT_CONFIG: Config = {
   startWithWindows: false,
   memoryEnabled: true,
   pomodoroFocusMin: 25,
-  pomodoroBreakMin: 5
+  pomodoroBreakMin: 5,
+  voiceEnabled: false,
+  voiceId: 'es_MX-ald-medium',
+  voiceSpeed: 1,
+  voicePitch: 1,
+  listenEnabled: false,
+  wakeWordEnabled: false,
+  whisperModel: 'base',
+  pushToTalkKey: 'Ctrl+Alt+D'
 }
 
 function str(v: unknown, fallback: string, max = 2000): string {
@@ -78,6 +97,14 @@ export function normalizeConfig(raw: unknown): Config {
     startWithWindows: r.startWithWindows === true,
     memoryEnabled: r.memoryEnabled !== false,
     pomodoroFocusMin: Math.round(num(r.pomodoroFocusMin, DEFAULT_CONFIG.pomodoroFocusMin, 5, 90)),
-    pomodoroBreakMin: Math.round(num(r.pomodoroBreakMin, DEFAULT_CONFIG.pomodoroBreakMin, 1, 30))
+    pomodoroBreakMin: Math.round(num(r.pomodoroBreakMin, DEFAULT_CONFIG.pomodoroBreakMin, 1, 30)),
+    voiceEnabled: r.voiceEnabled === true,
+    voiceId: typeof r.voiceId === 'string' && /^[a-z]{2}_[A-Z]{2}-[\w]+-[\w]+$/.test(r.voiceId) ? r.voiceId : DEFAULT_CONFIG.voiceId,
+    voiceSpeed: num(r.voiceSpeed, DEFAULT_CONFIG.voiceSpeed, 0.6, 1.6),
+    voicePitch: num(r.voicePitch, DEFAULT_CONFIG.voicePitch, 0.75, 1.4),
+    listenEnabled: r.listenEnabled === true,
+    wakeWordEnabled: r.wakeWordEnabled === true,
+    whisperModel: r.whisperModel === 'tiny' || r.whisperModel === 'small' ? r.whisperModel : 'base',
+    pushToTalkKey: str(r.pushToTalkKey, DEFAULT_CONFIG.pushToTalkKey, 40)
   }
 }

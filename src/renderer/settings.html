@@ -152,6 +152,54 @@
       </fieldset>
 
       <fieldset>
+        <legend>Voz — Dark habla</legend>
+        <div class="check" style="margin-top: 0">
+          <input type="checkbox" id="voiceEnabled" />
+          <label for="voiceEnabled">Leer sus respuestas en voz alta</label>
+        </div>
+        <label for="voiceId">Voz</label>
+        <div class="row">
+          <select id="voiceId"></select>
+          <button type="button" id="voiceDownload">Descargar</button>
+        </div>
+        <label for="voiceSpeed">Velocidad</label>
+        <div class="range">
+          <input type="range" id="voiceSpeed" min="0.6" max="1.6" step="0.05" />
+          <output id="voiceSpeedOut"></output>
+        </div>
+        <label for="voicePitch">Tono (más grave ← → más agudo)</label>
+        <div class="range">
+          <input type="range" id="voicePitch" min="0.75" max="1.4" step="0.05" />
+          <output id="voicePitchOut"></output>
+        </div>
+        <div class="row" style="margin-top: 10px">
+          <button type="button" id="voiceTest">▶ Probar voz</button>
+        </div>
+        <div id="voiceMsg" class="hint"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Voz — Dark escucha</legend>
+        <div class="check" style="margin-top: 0">
+          <input type="checkbox" id="listenEnabled" />
+          <label for="listenEnabled">Hablarle con el botón 🎤 o con un atajo de teclado</label>
+        </div>
+        <label for="pushToTalkKey">Atajo de teclado</label>
+        <input type="text" id="pushToTalkKey" spellcheck="false" />
+        <div class="check">
+          <input type="checkbox" id="wakeWordEnabled" />
+          <label for="wakeWordEnabled" id="wakeLabel">Escuchar siempre y activarse al oír su nombre</label>
+        </div>
+        <div class="hint">Todo se procesa en tu PC, nada sale a internet. El micrófono solo se abre cuando hace falta.</div>
+        <label for="whisperModel">Reconocimiento de voz</label>
+        <div class="row">
+          <select id="whisperModel"></select>
+          <button type="button" id="sttDownload">Descargar</button>
+        </div>
+        <div id="sttMsg" class="hint"></div>
+      </fieldset>
+
+      <fieldset>
         <legend>Pomodoro</legend>
         <div class="row">
           <div style="flex: 1">

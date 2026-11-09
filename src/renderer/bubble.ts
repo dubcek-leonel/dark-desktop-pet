@@ -9,6 +9,7 @@ type ChatUpdate =
   | { state: 'done'; text: string; notes?: string[] }
   | { state: 'error'; text: string }
   | Notice
+  | { state: 'listening' }
 
 const wrap = document.getElementById('wrap')!
 const question = document.getElementById('question')!
@@ -120,6 +121,13 @@ window.api.on('chat:update', (msg: ChatUpdate) => {
       if (busy) queuedNotice = msg
       else showNotice(msg)
       break
+    case 'listening':
+      question.textContent = ''
+      answer.classList.remove('error')
+      answer.innerHTML = '<span class="listening">🎤 Te escucho…</span>'
+      setNotes([])
+      setButtons([])
+      break
     case 'error':
       setBusy(false)
       answer.classList.add('error')
@@ -145,6 +153,7 @@ form.addEventListener('submit', (e) => {
 })
 
 closeBtn.addEventListener('click', () => window.api.send('chat:close'))
+document.getElementById('mic')!.addEventListener('click', () => window.api.send('chat:mic'))
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') window.api.send('chat:close')
 })
