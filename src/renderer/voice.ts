@@ -5,7 +5,7 @@
 import { Vad } from '../core/voice/vad'
 import { encodeWav, resample } from '../core/voice/wav'
 
-type Mode = { wake: boolean; command: boolean; muted: boolean }
+type Mode = { wake: boolean; command: boolean; muted: boolean; commandTimeoutMs?: number }
 
 let mode: Mode = { wake: false, command: false, muted: false }
 let ctx: AudioContext | null = null
@@ -13,7 +13,7 @@ let stream: MediaStream | null = null
 let node: ScriptProcessorNode | null = null
 
 const PRE_ROLL_MS = 400
-const COMMAND_TIMEOUT_MS = 8000
+let lastLevelAt = 0
 let vad = new Vad()
 let chunks: Float32Array[] = []
 let preRoll: Float32Array[] = []
@@ -59,6 +59,13 @@ function onAudio(input: Float32Array, rate: number): void {
   for (let i = 0; i < data.length; i++) sum += data[i] * data[i]
   const rms = Math.sqrt(sum / data.length)
   const dt = (data.length / rate) * 1000
+
+  // Medidor de volumen para la burbuja (unas 12 veces por segundo).
+  const now = performance.now()
+  if (mode.command && now - lastLevelAt > 80) {
+    lastLevelAt = now
+    window.api.send('voice:level', Math.min(1, rms * 14))
+  }
 
   // Guarda un poco de audio previo para no cortar el inicio de la frase.
   preRoll.push(data)
@@ -108,7 +115,7 @@ window.api.on('voice:mode', async (m: Mode) => {
   if (m.command && !wasCommand) {
     commandTimer = setTimeout(() => {
       if (mode.command && !capturing) window.api.send('voice:timeout')
-    }, COMMAND_TIMEOUT_MS)
+    }, m.commandTimeoutMs ?? 9000)
   }
   if (m.wake || m.command) await startMic()
   else stopMic()

@@ -53,6 +53,20 @@ describe('config', () => {
     expect(c).toMatchObject({ voiceSpeed: 1.6, voicePitch: 0.75, voiceId: 'es_MX-ald-medium', whisperModel: 'base' })
   })
 
+  it('motores de voz: Piper y STT automático por defecto, conversación activada', () => {
+    expect(normalizeConfig({})).toMatchObject({
+      voiceEngine: 'piper',
+      geminiVoice: 'Puck',
+      sttEngine: 'auto',
+      conversationMode: true
+    })
+    expect(normalizeConfig({ voiceEngine: 'gemini', geminiVoice: 'Nadie', sttEngine: 'x' })).toMatchObject({
+      voiceEngine: 'gemini',
+      geminiVoice: 'Puck',
+      sttEngine: 'auto'
+    })
+  })
+
   it('un proveedor desconocido vuelve al de por defecto', () => {
     expect(normalizeConfig({ provider: 'skynet' }).provider).toBe('gemini')
   })

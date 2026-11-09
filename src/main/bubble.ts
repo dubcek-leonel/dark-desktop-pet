@@ -84,6 +84,11 @@ export class Bubble {
     })
   }
 
+  /** Nivel del micrófono para el medidor (solo si está visible). */
+  level(l: number): void {
+    if (this.isVisible() && this.ready) this.win!.webContents.send('chat:level', l)
+  }
+
   setHeight(h: number): void {
     const nh = Math.round(Math.min(MAX_H, Math.max(MIN_H, h)))
     if (nh === this.height) return

@@ -8,36 +8,61 @@
       :root {
         --bg: #14141c;
         --panel: #1d1d29;
+        --panel2: #24243a;
         --line: #33334a;
         --text: #ecebf5;
         --muted: #9a98b0;
         --accent: #8b5cf6;
         --ok: #4ade80;
         --err: #f87171;
+        --warn: #fbbf24;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        padding: 20px 22px 28px;
         background: var(--bg);
         color: var(--text);
         font-family: 'Segoe UI', system-ui, sans-serif;
         font-size: 14px;
       }
-      header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-      header img { width: 52px; height: 52px; }
-      h1 { font-size: 20px; margin: 0; }
-      header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
-      fieldset {
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: var(--panel);
-        padding: 12px 14px 14px;
-        margin: 0 0 14px;
+      header { display: flex; align-items: center; gap: 12px; padding: 16px 20px 10px; }
+      header img { width: 46px; height: 46px; }
+      h1 { font-size: 19px; margin: 0; }
+      header p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+      #saved { margin-left: auto; color: var(--ok); font-size: 12.5px; opacity: 0; transition: opacity 0.3s; }
+      #saved.show { opacity: 1; }
+
+      nav { display: flex; gap: 4px; padding: 0 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 2; }
+      nav button {
+        border: 0;
+        background: none;
+        color: var(--muted);
+        font: inherit;
+        padding: 10px 12px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
       }
-      legend { padding: 0 6px; font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
-      label { display: block; margin: 10px 0 4px; font-size: 13px; }
-      label:first-of-type { margin-top: 2px; }
+      nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+      main { padding: 16px 20px 28px; }
+      section[data-tab] { display: none; }
+      section[data-tab].active { display: block; }
+
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; }
+      .card-head { display: flex; align-items: center; gap: 12px; }
+      .card-head h2 { font-size: 15.5px; margin: 0; flex: 1; }
+      .card-head small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; margin-top: 2px; }
+      .card-body { margin-top: 12px; }
+      .card.off .card-body { opacity: 0.45; pointer-events: none; }
+
+      /* Interruptor */
+      .switch { position: relative; width: 46px; height: 26px; flex: none; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .switch span { position: absolute; inset: 0; background: #3a3a52; border-radius: 13px; cursor: pointer; transition: 0.2s; }
+      .switch span::before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
+      .switch input:checked + span { background: var(--accent); }
+      .switch input:checked + span::before { transform: translateX(20px); }
+
+      label.lbl { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--muted); }
       input[type='text'], input[type='password'], input[type='number'], select, textarea {
         width: 100%;
         padding: 8px 10px;
@@ -51,11 +76,9 @@
       input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
       .row { display: flex; gap: 8px; align-items: center; }
       .row > input, .row > select { flex: 1; }
-      .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
-      .hint a { color: var(--accent); }
       button {
         border: 1px solid var(--line);
-        background: #262636;
+        background: var(--panel2);
         color: var(--text);
         border-radius: 8px;
         padding: 8px 12px;
@@ -64,24 +87,38 @@
         white-space: nowrap;
       }
       button:hover { border-color: var(--accent); }
-      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; width: 100%; padding: 10px; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+      .hint { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+      .hint a, .link { color: var(--accent); cursor: pointer; text-decoration: underline; }
+
+      .status { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--panel2); display: none; }
+      .status.show { display: block; }
+      .status.ok { color: var(--ok); }
+      .status.err { color: var(--err); }
+      .status.warn { color: var(--warn); }
+      .progress { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+      .progress div { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+
+      .choice { display: flex; gap: 10px; align-items: flex-start; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; margin-top: 8px; cursor: pointer; }
+      .choice:has(input:checked) { border-color: var(--accent); background: var(--panel2); }
+      .choice input { margin-top: 3px; }
+      .choice b { font-weight: 600; }
+      .choice small { display: block; color: var(--muted); font-size: 12.5px; }
       .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-      .check label { margin: 0; }
-      #status, #probe { min-height: 18px; font-size: 13px; margin-top: 8px; }
-      .ok { color: var(--ok); }
-      .err { color: var(--err); }
+      kbd { background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: 12px; }
+
+      details { margin-top: 12px; }
+      summary { cursor: pointer; color: var(--muted); font-size: 13px; }
       .range { display: flex; gap: 10px; align-items: center; }
       .range input { flex: 1; }
-      .range output { width: 44px; text-align: right; color: var(--muted); }
-      .list { list-style: none; margin: 10px 0; padding: 0; max-height: 220px; overflow-y: auto; }
-      .list li {
-        display: flex;
-        gap: 8px;
-        align-items: flex-start;
-        padding: 7px 8px;
-        border-bottom: 1px solid var(--line);
-        font-size: 13px;
-      }
+      .range output { width: 46px; text-align: right; color: var(--muted); }
+
+      .meter { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; margin-top: 8px; }
+      .meter div { height: 100%; width: 0; background: linear-gradient(90deg, var(--ok), var(--accent)); transition: width 0.08s linear; }
+
+      .list { list-style: none; margin: 10px 0; padding: 0; max-height: 240px; overflow-y: auto; }
+      .list li { display: flex; gap: 8px; align-items: flex-start; padding: 7px 8px; border-bottom: 1px solid var(--line); font-size: 13px; }
       .list li:last-child { border-bottom: 0; }
       .list li span { flex: 1; }
       .list li small { color: var(--muted); white-space: nowrap; }
@@ -95,144 +132,162 @@
       <img id="avatar" alt="" />
       <div>
         <h1 id="title">Ajustes</h1>
-        <p>Los cambios se aplican al guardar.</p>
+        <p>Los cambios se guardan solos.</p>
       </div>
+      <div id="saved">✓ Guardado</div>
     </header>
 
-    <form id="form">
-      <fieldset>
-        <legend>Inteligencia artificial</legend>
-        <label for="provider">Proveedor</label>
-        <select id="provider"></select>
+    <nav>
+      <button data-tab="voz" class="active">🎙 Voz</button>
+      <button data-tab="ia">🤖 IA</button>
+      <button data-tab="personaje">🐾 Personaje</button>
+      <button data-tab="memoria">🧠 Memoria</button>
+    </nav>
 
-        <div id="keyBlock">
-          <label for="apiKey">API key</label>
-          <input type="password" id="apiKey" autocomplete="off" spellcheck="false" />
-          <div class="hint" id="keyHint"></div>
-        </div>
-
-        <label for="model">Modelo</label>
-        <div class="row">
-          <input type="text" id="model" list="models" spellcheck="false" />
-          <button type="button" id="loadModels">Cargar lista</button>
-        </div>
-        <datalist id="models"></datalist>
-
-        <label for="baseUrl">URL del servicio</label>
-        <input type="text" id="baseUrl" spellcheck="false" />
-
-        <div class="row" style="margin-top: 10px">
-          <button type="button" id="test">Probar conexión</button>
-        </div>
-        <div id="probe"></div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Personaje</legend>
-        <label for="name">Nombre</label>
-        <input type="text" id="name" maxlength="40" />
-        <label for="personality">Personalidad</label>
-        <textarea id="personality" maxlength="1000"></textarea>
-        <div class="hint">Ejemplo: sarcástico y algo flojo, pero en el fondo buena onda.</div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Comportamiento</legend>
-        <label for="scale">Tamaño</label>
-        <div class="range">
-          <input type="range" id="scale" min="0.5" max="2" step="0.1" />
-          <output id="scaleOut"></output>
-        </div>
-        <label for="sleep">Se duerme después de (minutos sin tocarlo)</label>
-        <input type="number" id="sleep" min="1" max="120" />
-        <div class="check">
-          <input type="checkbox" id="startup" />
-          <label for="startup">Iniciar con Windows (en la versión instalada)</label>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Voz — Dark habla</legend>
-        <div class="check" style="margin-top: 0">
-          <input type="checkbox" id="voiceEnabled" />
-          <label for="voiceEnabled">Leer sus respuestas en voz alta</label>
-        </div>
-        <label for="voiceId">Voz</label>
-        <div class="row">
-          <select id="voiceId"></select>
-          <button type="button" id="voiceDownload">Descargar</button>
-        </div>
-        <label for="voiceSpeed">Velocidad</label>
-        <div class="range">
-          <input type="range" id="voiceSpeed" min="0.6" max="1.6" step="0.05" />
-          <output id="voiceSpeedOut"></output>
-        </div>
-        <label for="voicePitch">Tono (más grave ← → más agudo)</label>
-        <div class="range">
-          <input type="range" id="voicePitch" min="0.75" max="1.4" step="0.05" />
-          <output id="voicePitchOut"></output>
-        </div>
-        <div class="row" style="margin-top: 10px">
-          <button type="button" id="voiceTest">▶ Probar voz</button>
-        </div>
-        <div id="voiceMsg" class="hint"></div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Voz — Dark escucha</legend>
-        <div class="check" style="margin-top: 0">
-          <input type="checkbox" id="listenEnabled" />
-          <label for="listenEnabled">Hablarle con el botón 🎤 o con un atajo de teclado</label>
-        </div>
-        <label for="pushToTalkKey">Atajo de teclado</label>
-        <input type="text" id="pushToTalkKey" spellcheck="false" />
-        <div class="check">
-          <input type="checkbox" id="wakeWordEnabled" />
-          <label for="wakeWordEnabled" id="wakeLabel">Escuchar siempre y activarse al oír su nombre</label>
-        </div>
-        <div class="hint">Todo se procesa en tu PC, nada sale a internet. El micrófono solo se abre cuando hace falta.</div>
-        <label for="whisperModel">Reconocimiento de voz</label>
-        <div class="row">
-          <select id="whisperModel"></select>
-          <button type="button" id="sttDownload">Descargar</button>
-        </div>
-        <div id="sttMsg" class="hint"></div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Pomodoro</legend>
-        <div class="row">
-          <div style="flex: 1">
-            <label for="focusMin">Foco (minutos)</label>
-            <input type="number" id="focusMin" min="5" max="90" />
+    <main>
+      <!-- ================= VOZ ================= -->
+      <section data-tab="voz" class="active">
+        <div class="card" id="speakCard">
+          <div class="card-head">
+            <h2>🔊 Que Dark hable<small>Lee sus respuestas y avisos en voz alta</small></h2>
+            <label class="switch"><input type="checkbox" id="voiceEnabled" /><span></span></label>
           </div>
-          <div style="flex: 1">
-            <label for="breakMin">Descanso (minutos)</label>
-            <input type="number" id="breakMin" min="1" max="30" />
+          <div class="card-body">
+            <label class="lbl" for="voicePick">Voz</label>
+            <div class="row">
+              <select id="voicePick"></select>
+              <button type="button" id="voiceTest">▶ Probar</button>
+            </div>
+            <div class="status" id="voiceStatus"><span></span><div class="progress"><div></div></div></div>
+            <details>
+              <summary>Ajustar velocidad y tono</summary>
+              <label class="lbl" for="voiceSpeed">Velocidad <span class="hint" id="speedNote"></span></label>
+              <div class="range"><input type="range" id="voiceSpeed" min="0.6" max="1.6" step="0.05" /><output id="voiceSpeedOut"></output></div>
+              <label class="lbl" for="voicePitch">Tono (más grave ← → más agudo)</label>
+              <div class="range"><input type="range" id="voicePitch" min="0.75" max="1.4" step="0.05" /><output id="voicePitchOut"></output></div>
+            </details>
           </div>
         </div>
-        <div class="hint">Se inicia desde el menú de Dark (clic derecho) o el ícono de la bandeja.</div>
-      </fieldset>
 
-      <fieldset>
-        <legend>Memoria</legend>
-        <div class="check" style="margin-top: 0">
-          <input type="checkbox" id="memoryEnabled" />
-          <label for="memoryEnabled">Recordar cosas sobre mí entre conversaciones</label>
+        <div class="card" id="listenCard">
+          <div class="card-head">
+            <h2>🎤 Que Dark me escuche<small>Háblale en vez de escribir</small></h2>
+            <label class="switch"><input type="checkbox" id="listenOn" /><span></span></label>
+          </div>
+          <div class="card-body">
+            <label class="choice">
+              <input type="radio" name="listenMode" value="button" />
+              <div><b>Cuando yo quiera</b><small>Tocando 🎤 en la burbuja o con el atajo <kbd id="kbdShow">Ctrl+Alt+D</kbd></small></div>
+            </label>
+            <label class="choice">
+              <input type="radio" name="listenMode" value="wake" />
+              <div><b id="wakeTitle">Siempre, cuando digo "Dark"</b><small>Por ejemplo: "Dark, recuérdame tomar agua en 20 minutos"</small></div>
+            </label>
+            <div class="check">
+              <input type="checkbox" id="conversationMode" />
+              <label for="conversationMode">Seguir la conversación sin tener que llamarlo otra vez</label>
+            </div>
+
+            <div class="row" style="margin-top: 12px">
+              <button type="button" id="micTest">🎤 Probar micrófono</button>
+              <span class="hint" id="micHint">Di algo después de tocar el botón.</span>
+            </div>
+            <div class="meter"><div id="micMeter"></div></div>
+            <div class="status" id="listenStatus"><span></span><div class="progress"><div></div></div></div>
+
+            <details>
+              <summary>Más opciones</summary>
+              <label class="lbl" for="pushToTalkKey">Atajo de teclado</label>
+              <input type="text" id="pushToTalkKey" spellcheck="false" />
+              <label class="lbl" for="sttEngine">Quién entiende lo que dices</label>
+              <select id="sttEngine">
+                <option value="auto">Automático (local si está instalado; si no, Gemini)</option>
+                <option value="gemini">Gemini (usa internet y tu API key)</option>
+                <option value="whisper">Whisper local (sin internet, más rápido)</option>
+              </select>
+              <label class="lbl" for="whisperModel">Modelo local</label>
+              <div class="row">
+                <select id="whisperModel"></select>
+                <button type="button" id="sttDownload">⬇ Descargar</button>
+              </div>
+              <div class="hint">Con el reconocimiento local nada de tu voz sale de tu PC.</div>
+            </details>
+          </div>
         </div>
-        <ul class="list" id="memList"></ul>
-        <button type="button" id="memClear" class="danger">Borrar todos los recuerdos</button>
-      </fieldset>
+      </section>
 
-      <fieldset>
-        <legend>Recordatorios pendientes</legend>
-        <ul class="list" id="remList"></ul>
-        <div class="hint">Pídeselos por chat: "recuérdame tomar agua en 20 minutos".</div>
-      </fieldset>
+      <!-- ================= IA ================= -->
+      <section data-tab="ia">
+        <div class="card">
+          <label class="lbl" for="provider" style="margin-top: 0">Proveedor</label>
+          <select id="provider"></select>
+          <div id="keyBlock">
+            <label class="lbl" for="apiKey">API key</label>
+            <input type="password" id="apiKey" autocomplete="off" spellcheck="false" />
+            <div class="hint" id="keyHint"></div>
+          </div>
+          <label class="lbl" for="model">Modelo</label>
+          <div class="row">
+            <input type="text" id="model" list="models" spellcheck="false" />
+            <button type="button" id="loadModels">Ver lista</button>
+          </div>
+          <datalist id="models"></datalist>
+          <details>
+            <summary>Avanzado</summary>
+            <label class="lbl" for="baseUrl">URL del servicio</label>
+            <input type="text" id="baseUrl" spellcheck="false" />
+          </details>
+          <div class="row" style="margin-top: 12px"><button type="button" id="test" class="primary">Probar conexión</button></div>
+          <div class="status" id="probe"><span></span></div>
+        </div>
+      </section>
 
-      <button type="submit" class="primary">Guardar</button>
-      <div id="status"></div>
-    </form>
+      <!-- ================= PERSONAJE ================= -->
+      <section data-tab="personaje">
+        <div class="card">
+          <label class="lbl" for="name" style="margin-top: 0">Nombre</label>
+          <input type="text" id="name" maxlength="40" />
+          <label class="lbl" for="personality">Personalidad</label>
+          <textarea id="personality" maxlength="1000"></textarea>
+          <div class="hint">Ejemplo: sarcástico y algo flojo, pero en el fondo buena onda.</div>
+        </div>
+        <div class="card">
+          <label class="lbl" for="scale" style="margin-top: 0">Tamaño</label>
+          <div class="range"><input type="range" id="scale" min="0.5" max="2" step="0.1" /><output id="scaleOut"></output></div>
+          <label class="lbl" for="sleep">Se duerme después de (minutos sin tocarlo)</label>
+          <input type="number" id="sleep" min="1" max="120" />
+          <div class="check">
+            <input type="checkbox" id="startup" />
+            <label for="startup">Iniciar con Windows (versión instalada)</label>
+          </div>
+        </div>
+        <div class="card">
+          <h2 style="font-size: 15px; margin: 0">🍅 Pomodoro</h2>
+          <div class="row">
+            <div style="flex: 1"><label class="lbl" for="focusMin">Foco (min)</label><input type="number" id="focusMin" min="5" max="90" /></div>
+            <div style="flex: 1"><label class="lbl" for="breakMin">Descanso (min)</label><input type="number" id="breakMin" min="1" max="30" /></div>
+          </div>
+          <div class="hint">También puedes pedírselo: "pon un pomodoro de 45 minutos".</div>
+        </div>
+      </section>
+
+      <!-- ================= MEMORIA ================= -->
+      <section data-tab="memoria">
+        <div class="card">
+          <div class="card-head">
+            <h2>🧠 Recordar cosas sobre mí<small>Lo que Dark sabe de ti entre conversaciones</small></h2>
+            <label class="switch"><input type="checkbox" id="memoryEnabled" /><span></span></label>
+          </div>
+          <ul class="list" id="memList"></ul>
+          <button type="button" id="memClear" class="danger">Borrar todos los recuerdos</button>
+        </div>
+        <div class="card">
+          <h2 style="font-size: 15px; margin: 0">⏰ Recordatorios pendientes</h2>
+          <ul class="list" id="remList"></ul>
+          <div class="hint">Pídeselos: "recuérdame tomar agua en 20 minutos".</div>
+        </div>
+      </section>
+    </main>
     <script type="module" src="./settings.ts"></script>
   </body>
 </html>

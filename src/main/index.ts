@@ -4,7 +4,7 @@ import { createOllama } from '../core/ai/ollama'
 import { createOpenAICompat } from '../core/ai/openaiCompat'
 import { friendlyError } from '../core/ai/errors'
 import type { AIProvider } from '../core/ai/types'
-import { normalizeConfig, PROVIDER_PRESETS, type Config, type ProviderId } from '../core/config'
+import { GEMINI_VOICES, normalizeConfig, PROVIDER_PRESETS, type Config, type ProviderId } from '../core/config'
 import { mergeMemories } from '../core/memory'
 import { formatRemaining } from '../core/pomodoro'
 import { describeRepeat, formatWhen, matches } from '../core/reminders'
@@ -77,11 +77,16 @@ function makeProvider(provider: ProviderId, baseUrl: string, model: string, apiK
 
 const bubble = new Bubble(loadPage)
 
-const voice = new VoiceService({
+const voice: VoiceService = new VoiceService({
   getConfig: () => config,
+  getGeminiKey: () => getApiKey('gemini'),
   pet: (ev) => controller?.dispatch(ev),
   ui: (msg) => bubble.update(msg),
-  onCommand: (text) => void chat.send(text),
+  onLevel: (level) => {
+    bubble.level(level)
+    settingsWin?.webContents.send('voice:level', level)
+  },
+  onCommand: (text: string): Promise<void> => chat.send(text),
   load: loadPage,
   log: (m) => console.log(`[voz] ${m}`)
 })
@@ -196,7 +201,7 @@ function runActions(actions: Action[]): string[] {
   return notes
 }
 
-const chat = new ChatService({
+const chat: ChatService = new ChatService({
   getProvider: () => makeProvider(config.provider, config.baseUrl, config.model, getApiKey(config.provider)),
   getPersona: () => ({ name: config.name, personality: config.personality }),
   getContext: appContext,
@@ -211,7 +216,7 @@ const chat = new ChatService({
     settingsChanged()
   },
   onActions: runActions,
-  speak: (t) => voice.speak(t)
+  speak: (t: string): Promise<void> => voice.speak(t)
 })
 
 const pomodoro = new PomodoroManager(
@@ -354,7 +359,7 @@ function registerShortcuts(): void {
   try {
     globalShortcut.register(config.pushToTalkKey, () => {
       pet?.showInactive()
-      void voice.listenOnce()
+      void voice.listenOnce('chat')
     })
   } catch (e) {
     console.warn('No se pudo registrar el atajo', config.pushToTalkKey, e)
@@ -366,7 +371,11 @@ function registerShortcuts(): void {
 ipcMain.on('pet:hit', (_e, overPet: unknown) => {
   pet?.setIgnoreMouseEvents(overPet !== true, { forward: true })
 })
-ipcMain.on('pet:click', () => controller?.dispatch({ type: 'click' }))
+ipcMain.on('pet:click', () => {
+  // Si está hablando, un clic lo hace callar.
+  if (voice.isSpeaking()) voice.stopSpeaking()
+  else controller?.dispatch({ type: 'click' })
+})
 ipcMain.on('pet:dblclick', () => bubble.open())
 ipcMain.on('pet:dragStart', (_e, o: { offsetX?: unknown; offsetY?: unknown }) => {
   controller?.startDrag(Number(o?.offsetX) || 0, Number(o?.offsetY) || 0)
@@ -399,9 +408,24 @@ ipcMain.on('chat:action', (_e, id: unknown) => {
     bubble.hide()
   }
 })
-ipcMain.on('chat:mic', () => void voice.listenOnce())
+ipcMain.on('chat:mic', () => void voice.listenOnce('chat'))
 
-ipcMain.handle('voice:status', () => ({ ...voiceStatus(), catalog: VOICES, whisperModels: WHISPER_MODELS }))
+ipcMain.handle('voice:micTest', async () => {
+  try {
+    return { ok: true, text: (await voice.listenOnce('test')) ?? '' }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
+})
+
+ipcMain.handle('voice:status', () => ({
+  ...voiceStatus(),
+  catalog: VOICES,
+  whisperModels: WHISPER_MODELS,
+  geminiVoices: GEMINI_VOICES,
+  hasGeminiKey: hasApiKey('gemini'),
+  sttEngine: voice.sttEngine()
+}))
 
 ipcMain.handle('voice:install', async (_e, a: { kind?: unknown; id?: unknown }) => {
   const progress = (label: string, pct: number): void =>
@@ -417,14 +441,20 @@ ipcMain.handle('voice:install', async (_e, a: { kind?: unknown; id?: unknown }) 
   }
 })
 
-ipcMain.handle('voice:test', async (_e, a: { voiceId?: unknown; speed?: unknown; pitch?: unknown }) => {
-  const c = normalizeConfig({ ...config, voiceId: a?.voiceId, voiceSpeed: a?.speed, voicePitch: a?.pitch })
-  await voice.speak(`Hola, soy ${config.name}. Qué flojera hablar, pero bueno, así sueno.`, {
-    voiceId: c.voiceId,
-    speed: c.voiceSpeed,
-    pitch: c.voicePitch
-  })
-  return true
+ipcMain.handle('voice:test', async (_e, a: Record<string, unknown>) => {
+  const c = normalizeConfig({ ...config, ...a })
+  try {
+    await voice.speak(`Hola, soy ${config.name}. Qué flojera hablar, pero bueno, así sueno.`, {
+      voiceEngine: c.voiceEngine,
+      voiceId: c.voiceId,
+      geminiVoice: c.geminiVoice,
+      voiceSpeed: c.voiceSpeed,
+      voicePitch: c.voicePitch
+    })
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
 })
 
 ipcMain.on('chat:resize', (_e, h: unknown) => {
@@ -528,6 +558,7 @@ app.whenReady().then(() => {
   registerShortcuts()
   void voice.apply()
   if (process.env['DARK_SELFTEST']) setTimeout(() => void voice.selfTest().finally(() => app.quit()), 3000)
+  if (process.env['DARK_OPEN_SETTINGS']) openSettings()
 
 
   // Primera vez sin API key: Dark lo pide y abre los ajustes.

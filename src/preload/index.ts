@@ -16,6 +16,7 @@ const SEND = [
   'voice:timeout',
   'voice:played',
   'voice:error',
+  'voice:level',
   'chat:resize'
 ] as const
 const ON = [
@@ -26,7 +27,9 @@ const ON = [
   'voice:mode',
   'voice:play',
   'voice:stopPlayback',
-  'voice:progress'
+  'voice:progress',
+  'voice:level',
+  'chat:level'
 ] as const
 const INVOKE = [
   'config:get',
@@ -40,7 +43,8 @@ const INVOKE = [
   'reminders:delete',
   'voice:status',
   'voice:install',
-  'voice:test'
+  'voice:test',
+  'voice:micTest'
 ] as const
 
 type SendCh = (typeof SEND)[number]

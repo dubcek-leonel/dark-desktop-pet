@@ -24,7 +24,24 @@ export interface Config {
   wakeWordEnabled: boolean
   whisperModel: 'tiny' | 'base' | 'small'
   pushToTalkKey: string
+  /** Motor de voz: Piper (local, instantáneo) o Gemini (natural, usa internet). */
+  voiceEngine: 'piper' | 'gemini'
+  geminiVoice: string
+  /** Quién transcribe: automático (Whisper local si está, si no Gemini), o uno fijo. */
+  sttEngine: 'auto' | 'whisper' | 'gemini'
+  /** Después de responder por voz, sigue escuchando unos segundos para continuar la charla. */
+  conversationMode: boolean
 }
+
+export const GEMINI_VOICES: Array<{ id: string; label: string }> = [
+  { id: 'Puck', label: 'Puck — animado (natural)' },
+  { id: 'Fenrir', label: 'Fenrir — intenso (natural)' },
+  { id: 'Charon', label: 'Charon — grave y tranquilo (natural)' },
+  { id: 'Orus', label: 'Orus — firme (natural)' },
+  { id: 'Zephyr', label: 'Zephyr — brillante (natural)' },
+  { id: 'Kore', label: 'Kore — femenina, segura (natural)' },
+  { id: 'Leda', label: 'Leda — femenina, juvenil (natural)' }
+]
 
 export const PROVIDER_PRESETS: Record<ProviderId, { label: string; baseUrl: string; model: string; needsKey: boolean }> = {
   gemini: {
@@ -66,7 +83,11 @@ export const DEFAULT_CONFIG: Config = {
   listenEnabled: false,
   wakeWordEnabled: false,
   whisperModel: 'base',
-  pushToTalkKey: 'Ctrl+Alt+D'
+  pushToTalkKey: 'Ctrl+Alt+D',
+  voiceEngine: 'piper',
+  geminiVoice: 'Puck',
+  sttEngine: 'auto',
+  conversationMode: true
 }
 
 function str(v: unknown, fallback: string, max = 2000): string {
@@ -105,6 +126,10 @@ export function normalizeConfig(raw: unknown): Config {
     listenEnabled: r.listenEnabled === true,
     wakeWordEnabled: r.wakeWordEnabled === true,
     whisperModel: r.whisperModel === 'tiny' || r.whisperModel === 'small' ? r.whisperModel : 'base',
-    pushToTalkKey: str(r.pushToTalkKey, DEFAULT_CONFIG.pushToTalkKey, 40)
+    pushToTalkKey: str(r.pushToTalkKey, DEFAULT_CONFIG.pushToTalkKey, 40),
+    voiceEngine: r.voiceEngine === 'gemini' ? 'gemini' : 'piper',
+    geminiVoice: GEMINI_VOICES.some((v) => v.id === r.geminiVoice) ? (r.geminiVoice as string) : DEFAULT_CONFIG.geminiVoice,
+    sttEngine: r.sttEngine === 'whisper' || r.sttEngine === 'gemini' ? r.sttEngine : 'auto',
+    conversationMode: r.conversationMode !== false
   }
 }

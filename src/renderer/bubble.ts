@@ -124,7 +124,8 @@ window.api.on('chat:update', (msg: ChatUpdate) => {
     case 'listening':
       question.textContent = ''
       answer.classList.remove('error')
-      answer.innerHTML = '<span class="listening">🎤 Te escucho…</span>'
+      answer.innerHTML =
+        '<span class="listening">🎤 Te escucho…</span><div class="meter"><div id="meterBar"></div></div>'
       setNotes([])
       setButtons([])
       break
@@ -137,6 +138,11 @@ window.api.on('chat:update', (msg: ChatUpdate) => {
       flushQueuedNotice()
       break
   }
+})
+
+window.api.on('chat:level', (level: number) => {
+  const bar = document.getElementById('meterBar')
+  if (bar) bar.style.width = `${Math.round(Math.max(0.04, level) * 100)}%`
 })
 
 window.api.on('chat:focus', () => {
